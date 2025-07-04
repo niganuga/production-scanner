@@ -89,6 +89,11 @@
             <button onclick="changeFacility()" style="float: right; padding: 5px 10px; font-size: 14px;">Change</button>
         </div>
         
+        <div class="info" id="printer-info" style="margin-top: 10px; display: none;">
+            <strong>Printer:</strong> <span id="printer-name">Not Set</span>
+            <button onclick="changePrinter()" style="float: right; padding: 5px 10px; font-size: 14px;">Change</button>
+        </div>
+        
         <div id="reader"></div>
         
         <div id="scan-result" style="display: none;" class="info">
@@ -96,7 +101,7 @@
         </div>
         
         <div class="stage-buttons" id="stage-buttons" style="display: none;">
-            <button onclick="updateStage('print', 'start')">Start Print</button>
+            <button onclick="updateStage('print', 'start')" style="background: #28a745;">Start Print</button>
             <button onclick="updateStage('print', 'complete')">Complete Print</button>
             <button onclick="updateStage('qc', 'complete')">Pass QC</button>
             <button onclick="updateStage('cut', 'complete')">Complete Cut</button>
@@ -114,14 +119,13 @@
     </div>
 
     <script>
-        // Configuration - UPDATE THESE WITH YOUR ACTUAL URLs
         // https://kureiji.app.n8n.cloud/webhook-test/production-stage-scan
         const WEBHOOK_URL = 'https://kureiji.app.n8n.cloud/webhook-test/production-stage-scan';
         // const WEBHOOK_URL = 'https://kureiji.app.n8n.cloud/webhook/batch-facility-validation';
         const BATCH_VALIDATION_URL = 'https://kureiji.app.n8n.cloud/webhook-test/batch-facility-validation';
-    
         let currentProductionId = null;
         let html5QrCode = null;
+        let currentPrinter = null;
         
         // Initialize facility
         let facilityName = localStorage.getItem('facilityName') || '';
@@ -130,6 +134,9 @@
         } else {
             document.getElementById('operator-name').textContent = facilityName;
         }
+        
+        // Initialize printer
+        currentPrinter = localStorage.getItem('currentPrinter') || '';
         
         // Initialize scanner
         function initScanner() {
@@ -179,11 +186,19 @@
                 return;
             }
             
+            // Check if printer selection is needed
+            if (stage === 'print' && action === 'start' && !currentPrinter) {
+                showStatus("Please select a printer first", "error");
+                changePrinter();
+                return;
+            }
+            
             const data = {
                 qrCode: currentProductionId,
                 stage: stage,
                 action: action,
                 facility: facilityName,
+                printer: currentPrinter,
                 timestamp: new Date().toISOString()
             };
             
@@ -268,9 +283,42 @@
                 localStorage.setItem('facilityName', facilityName);
                 document.getElementById('operator-name').textContent = facilityName;
                 showStatus(`Facility set to: ${facilityName}`, "success");
+                
+                // Show printer selection for print stations
+                document.getElementById('printer-info').style.display = 'block';
+                if (currentPrinter) {
+                    document.getElementById('printer-name').textContent = currentPrinter;
+                }
             } else if (selection) {
                 showStatus("Invalid facility name. Please enter CHICO or OUTPOST", "error");
                 changeFacility();
+            }
+        }
+        
+        function changePrinter() {
+            // Define printers based on facility
+            const printers = {
+                'CHICO': ['Printer 1', 'Printer 2', 'Printer 3', 'Printer 4'],
+                'OUTPOST': ['Printer A', 'Printer B', 'Printer C']
+            };
+            
+            const facilityPrinters = printers[facilityName] || [];
+            if (facilityPrinters.length === 0) {
+                showStatus("No printers configured for this facility", "error");
+                return;
+            }
+            
+            const printerList = facilityPrinters.join(', ');
+            const selection = prompt(`Select printer (${printerList}):`, currentPrinter);
+            
+            if (selection && facilityPrinters.includes(selection)) {
+                currentPrinter = selection;
+                localStorage.setItem('currentPrinter', selection);
+                document.getElementById('printer-name').textContent = selection;
+                showStatus(`Printer set to: ${selection}`, "success");
+            } else if (selection) {
+                showStatus("Invalid printer selection", "error");
+                changePrinter();
             }
         }
         
