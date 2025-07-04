@@ -1,0 +1,1975 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "get-order-status",
+          "options": {}
+        },
+        "id": "f3a080cc-263a-4967-bf7f-13bd832f9206",
+        "name": "Get Order Status",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1280,
+          0
+        ],
+        "webhookId": "get-order-status-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process order status request\nconst input = $input.first().json;\nconst { orderId, orderNumber, email } = input.body || input;\n\n// Build filter based on provided input\nlet filterFormula = '';\nif (orderId) {\n  filterFormula = `RECORD_ID() = '${orderId}'`;\n} else if (orderNumber) {\n  filterFormula = `{Order ID} = '${orderNumber}'`;\n} else if (email) {\n  filterFormula = `{Email} = '${email}'`;\n} else {\n  return [{\n    json: {\n      error: 'Please provide orderId, orderNumber, or email'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    filterFormula,\n    includeItems: true\n  }\n}];"
+        },
+        "id": "aa77ebf8-cc95-4632-a0bd-62fea3aaed62",
+        "name": "Process Order Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1080,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl2XIKxHAG7e9BFS",
+            "mode": "list",
+            "cachedResultName": "Orders"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {}
+        },
+        "id": "c37a5f70-0009-47b9-bea8-ad88eb8938b8",
+        "name": "Find Order",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -880,
+          0
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get order details and fetch items\nconst orders = $('Find Order').all();\n\nif (orders.length === 0) {\n  return [{\n    json: {\n      error: 'Order not found',\n      status: 404\n    }\n  }];\n}\n\nconst order = orders[0].json;\nconst orderItemIds = order.fields?.['Order Items'] || [];\n\n// Build filter for order items\nconst itemFilter = orderItemIds.length > 0 \n  ? `OR(${orderItemIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`\n  : '';\n\nreturn [{\n  json: {\n    order: {\n      id: order.id,\n      orderNumber: order.fields?.['Order ID'],\n      status: order.fields?.['Order Status'],\n      customer: order.fields?.['Customer Name'],\n      email: order.fields?.['Email'],\n      orderDate: order.fields?.['Order Date'],\n      total: order.fields?.['Total $'],\n      shippingMethod: order.fields?.['Shipping Method'],\n      rushService: order.fields?.['Rush Service'],\n      productionProgress: order.fields?.['Production Progress'],\n      internalNotes: order.fields?.['Internal Notes']\n    },\n    itemFilter\n  }\n}];"
+        },
+        "id": "06a6500e-56f6-4bdd-94bd-3480afa7111c",
+        "name": "Process Order Data",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -680,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "has-items",
+                "leftValue": "={{ $json.itemFilter }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "isNotEmpty"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "1eec9a0c-a044-4d97-969f-9622d7de0bb6",
+        "name": "Has Order Items?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -480,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblTN1vUIpu6HHqEL",
+            "mode": "list",
+            "cachedResultName": "Order Items"
+          },
+          "filterByFormula": "={{ $json.itemFilter }}",
+          "options": {}
+        },
+        "id": "413f2fb7-ca66-4dc0-8747-c1d4f5bc61df",
+        "name": "Get Order Items",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -280,
+          -20
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get production status for each item\nconst orderData = $('Process Order Data').first().json;\nconst items = $('Get Order Items').all();\n\n// Get production IDs\nconst productionIds = [];\nitems.forEach(item => {\n  const prodIds = item.json.fields?.['Linked Production'] || [];\n  productionIds.push(...prodIds);\n});\n\n// Build filter for productions\nconst productionFilter = productionIds.length > 0\n  ? `OR(${productionIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`\n  : '';\n\nreturn [{\n  json: {\n    orderData,\n    items: items.map(item => ({\n      id: item.json.id,\n      name: item.json.fields?.['Title'],\n      quantity: item.json.fields?.['Quantity'],\n      status: item.json.fields?.['Item Status'],\n      productType: item.json.fields?.['Product Type'],\n      hasFile: !item.json.fields?.['Needs File'],\n      batchName: item.json.fields?.['Batch Name']?.[0]\n    })),\n    productionFilter\n  }\n}];"
+        },
+        "id": "4ba10a09-1251-4c04-aac3-3e697fecb589",
+        "name": "Prepare Production Lookup",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -80,
+          -20
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "has-productions",
+                "leftValue": "={{ $json.productionFilter }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "isNotEmpty"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "0aea4d1b-2d3c-48b8-ae90-14aa5fc5fb6d",
+        "name": "Has Productions?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          120,
+          -20
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblKmtH1t8EhgkBT9",
+            "mode": "list",
+            "cachedResultName": "Productions"
+          },
+          "filterByFormula": "={{ $json.productionFilter }}",
+          "options": {
+            "fields": [
+              "Production ID",
+              "Production Status",
+              "Stage Progress",
+              "Print Started",
+              "Print Completed",
+              "QC Completed",
+              "Cut Completed",
+              "Ship Completed",
+              "Is Overdue"
+            ]
+          }
+        },
+        "id": "dbb3546c-ff2e-4c90-97fe-326e30d6a1c0",
+        "name": "Get Productions",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          320,
+          -40
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Compile final response\nconst baseData = $('Prepare Production Lookup').first().json;\nconst productions = $('Get Productions').all();\n\n// Map production data to items\nconst productionMap = new Map();\nproductions.forEach(prod => {\n  productionMap.set(prod.json.id, {\n    id: prod.json.fields?.['Production ID'],\n    status: prod.json.fields?.['Production Status'],\n    progress: prod.json.fields?.['Stage Progress'] || 0,\n    stages: {\n      printStarted: prod.json.fields?.['Print Started'],\n      printCompleted: prod.json.fields?.['Print Completed'],\n      qcCompleted: prod.json.fields?.['QC Completed'],\n      cutCompleted: prod.json.fields?.['Cut Completed'],\n      shipCompleted: prod.json.fields?.['Ship Completed']\n    },\n    isOverdue: prod.json.fields?.['Is Overdue']\n  });\n});\n\n// Enhance items with production data\nconst enhancedItems = baseData.items.map(item => {\n  // For now, just include the item data\n  // In real implementation, match productions to items\n  return {\n    ...item,\n    currentStage: determineCurrentStage(item.status),\n    stageProgress: getStageProgress(item.status)\n  };\n});\n\nfunction determineCurrentStage(status) {\n  const stageMap = {\n    'Pending': 'Awaiting Production',\n    'Ready for Production': 'In Queue',\n    'In Production': 'Printing',\n    'Quality Check': 'QC',\n    'Ready to Ship': 'Packing',\n    'Shipped': 'Completed'\n  };\n  return stageMap[status] || status;\n}\n\nfunction getStageProgress(status) {\n  const progressMap = {\n    'Pending': 0,\n    'Ready for Production': 10,\n    'In Production': 25,\n    'Quality Check': 50,\n    'Ready to Ship': 90,\n    'Shipped': 100\n  };\n  return progressMap[status] || 0;\n}\n\n// Calculate overall progress\nconst totalProgress = enhancedItems.length > 0\n  ? Math.round(enhancedItems.reduce((sum, item) => sum + item.stageProgress, 0) / enhancedItems.length)\n  : 0;\n\nreturn [{\n  json: {\n    success: true,\n    order: {\n      ...baseData.orderData.order,\n      overallProgress: totalProgress,\n      itemCount: enhancedItems.length,\n      completedCount: enhancedItems.filter(i => i.status === 'Shipped').length\n    },\n    items: enhancedItems,\n    summary: {\n      total: enhancedItems.length,\n      pending: enhancedItems.filter(i => i.status === 'Pending').length,\n      inProduction: enhancedItems.filter(i => ['In Production', 'Quality Check'].includes(i.status)).length,\n      readyToShip: enhancedItems.filter(i => i.status === 'Ready to Ship').length,\n      shipped: enhancedItems.filter(i => i.status === 'Shipped').length\n    }\n  }\n}];"
+        },
+        "id": "7aaf976b-abe4-4184-8e57-52b78a7f98ca",
+        "name": "Compile Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          520,
+          40
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "2f614448-29d0-4ac5-b19b-730ffdbc9b64",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          720,
+          160
+        ]
+      },
+      {
+        "parameters": {
+          "path": "get-pickup-ready",
+          "options": {}
+        },
+        "id": "b30c744d-1b26-444f-b5e9-840230fb6ada",
+        "name": "Get Pickup Ready List",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1280,
+          700
+        ],
+        "webhookId": "get-pickup-ready-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get orders ready for pickup\n// An order is ready when all items are completed but not yet picked up\n\nconst today = new Date().toISOString().split('T')[0];\n\n// Filter for orders that are completed but not picked up\nconst filterFormula = `AND(\n  {Order Status} = 'Completed',\n  {Pickup Confirmed} = BLANK(),\n  {Production Progress} >= 100\n)`;\n\nreturn [{\n  json: {\n    filterFormula,\n    requestDate: today\n  }\n}];"
+        },
+        "id": "1a1344e7-76df-4406-8e74-fcfd941d8a01",
+        "name": "Prepare Pickup Query",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1080,
+          700
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl2XIKxHAG7e9BFS",
+            "mode": "list",
+            "cachedResultName": "Orders"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {}
+        },
+        "id": "2316fc90-7fd7-4810-a427-221d30480f89",
+        "name": "Get Ready Orders",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -880,
+          700
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Format pickup ready list\nconst orders = $('Get Ready Orders').all();\n\nconst pickupList = orders.map(order => {\n  const fields = order.json.fields;\n  \n  // Calculate days waiting\n  const completedDate = fields['Status Changed At'];\n  const daysWaiting = completedDate \n    ? Math.floor((Date.now() - new Date(completedDate).getTime()) / (1000 * 60 * 60 * 24))\n    : 0;\n  \n  return {\n    orderId: order.json.id,\n    orderNumber: fields['Order ID'],\n    customerName: fields['Customer Name'],\n    email: fields['Email'],\n    phone: fields['Phone'],\n    itemCount: fields['Order Items']?.length || 0,\n    orderTotal: fields['Total $'],\n    completedDate: completedDate,\n    daysWaiting,\n    rushOrder: fields['Rush Service'] === 'Rush',\n    shippingMethod: fields['Shipping Method'],\n    pickupCode: fields['Pickup Code'] || `PU-${order.json.id.slice(-4)}`,\n    notes: fields['Internal Notes'],\n    priority: daysWaiting > 3 ? 'high' : fields['Rush Service'] === 'Rush' ? 'high' : 'normal'\n  };\n});\n\n// Sort by priority and days waiting\npickupList.sort((a, b) => {\n  if (a.priority !== b.priority) {\n    return a.priority === 'high' ? -1 : 1;\n  }\n  return b.daysWaiting - a.daysWaiting;\n});\n\n// Group by priority\nconst grouped = {\n  urgent: pickupList.filter(o => o.daysWaiting > 5),\n  high: pickupList.filter(o => o.priority === 'high' && o.daysWaiting <= 5),\n  normal: pickupList.filter(o => o.priority === 'normal')\n};\n\nreturn [{\n  json: {\n    success: true,\n    totalOrders: pickupList.length,\n    summary: {\n      urgent: grouped.urgent.length,\n      high: grouped.high.length,\n      normal: grouped.normal.length\n    },\n    orders: pickupList,\n    grouped\n  }\n}];"
+        },
+        "id": "73465ccc-2d44-4b0d-9552-3ea8327c18c9",
+        "name": "Format Pickup List",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -680,
+          700
+        ]
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "confirm-pickup",
+          "options": {}
+        },
+        "id": "4f6f80df-a61a-4ece-8eca-00bc75f1d9f4",
+        "name": "Confirm Pickup",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1280,
+          900
+        ],
+        "webhookId": "confirm-pickup-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process pickup confirmation\nconst input = $input.first().json;\nconst { orderId, pickupCode, signature, confirmedBy, notes, photo } = input.body || input;\n\n// Validate required fields\nif (!orderId || !pickupCode) {\n  return [{\n    json: {\n      success: false,\n      error: 'Missing required fields: orderId and pickupCode'\n    }\n  }];\n}\n\n// Prepare order update\nconst now = new Date().toISOString();\nconst updateData = {\n  'Pickup Confirmed': now,\n  'Order Status': 'Picked Up'\n};\n\n// Add notes if provided\nif (notes) {\n  updateData['Internal Notes'] = `Pickup confirmed at ${now} by ${confirmedBy || 'Customer'}. ${notes}`;\n}\n\nreturn [{\n  json: {\n    orderId,\n    updateData,\n    pickupLogData: {\n      orderId,\n      pickupCode,\n      confirmedBy: confirmedBy || 'Customer',\n      signature,\n      photo,\n      notes,\n      timestamp: now\n    }\n  }\n}];"
+        },
+        "id": "329bba60-e94c-410d-9afb-21832c99fd81",
+        "name": "Process Pickup Confirmation",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1080,
+          900
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl2XIKxHAG7e9BFS",
+            "mode": "list",
+            "cachedResultName": "Orders"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.orderId }}",
+              "Pickup Confirmed": "={{ $json.updateData['Pickup Confirmed'] }}",
+              "Order Status": "={{ $json.updateData['Order Status'] }}",
+              "Internal Notes": "={{ $json.updateData['Internal Notes'] }}"
+            },
+            "matchingColumns": [
+              "id"
+            ]
+          },
+          "options": {}
+        },
+        "id": "5284ce34-7e3e-4473-96f2-e9d776cdaaca",
+        "name": "Update Order Pickup",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -880,
+          900
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Create pickup log entry\nconst pickupData = $('Process Pickup Confirmation').first().json.pickupLogData;\nconst orderUpdate = $('Update Order Pickup').first().json;\n\n// Note: In production, you'd create this in a Pickup Log table\n// For now, we'll just return success\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Pickup confirmed successfully',\n    orderId: pickupData.orderId,\n    pickupTime: pickupData.timestamp,\n    confirmedBy: pickupData.confirmedBy\n  }\n}];"
+        },
+        "id": "81058a9b-b3bb-455b-9496-e2a487694413",
+        "name": "Create Pickup Log",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -680,
+          900
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "4c843145-3d87-4a96-87bf-aeea882d07a6",
+        "name": "Respond to Webhook1",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          -480,
+          800
+        ]
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "request-reprint",
+          "options": {}
+        },
+        "id": "d957976b-581d-4f06-ba70-9171675a0e94",
+        "name": "Request Reprint",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1280,
+          1540
+        ],
+        "webhookId": "request-reprint-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process reprint request\nconst input = $input.first().json;\nconst { \n  productionId, \n  reason, \n  defectType, \n  photo, \n  priority = 'high',\n  requestedBy,\n  notes \n} = input.body || input;\n\n// Validate required fields\nif (!productionId || !reason) {\n  return [{\n    json: {\n      success: false,\n      error: 'Missing required fields: productionId and reason'\n    }\n  }];\n}\n\n// Valid reasons and defect types\nconst validReasons = ['quality_issue', 'damage', 'wrong_item', 'customer_request', 'other'];\nconst validDefectTypes = ['print_quality', 'color_mismatch', 'alignment', 'material_defect', 'cutting_error'];\n\nif (!validReasons.includes(reason)) {\n  return [{\n    json: {\n      success: false,\n      error: `Invalid reason. Must be one of: ${validReasons.join(', ')}`\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    productionId,\n    reason,\n    defectType: defectType || [],\n    priority,\n    requestedBy: requestedBy || 'System',\n    notes,\n    timestamp: new Date().toISOString(),\n    needsPhoto: !!photo\n  }\n}];"
+        },
+        "id": "3152e97e-078f-439c-9ecb-294c6640ba70",
+        "name": "Process Reprint Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1080,
+          1540
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblKmtH1t8EhgkBT9",
+            "mode": "list",
+            "cachedResultName": "Productions"
+          },
+          "filterByFormula": "={{ `{Production ID} = '${$json.productionId}'` }}",
+          "options": {}
+        },
+        "id": "2d6d90b7-70a6-4399-ac9c-e205bc3cb69a",
+        "name": "Find Production for Reprint",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -880,
+          1540
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Create reprint production record\nconst productions = $('Find Production for Reprint').all();\nconst reprintRequest = $('Process Reprint Request').first().json;\n\nif (productions.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'Production record not found'\n    }\n  }];\n}\n\nconst originalProduction = productions[0].json;\nconst fields = originalProduction.fields;\n\n// Create new production record for reprint\nconst reprintData = {\n  'Order Item': fields['Order Item'],\n  'Linked Order': fields['Linked Order'],\n  'Production Status': 'Pending',\n  'Priority': reprintRequest.priority === 'urgent' ? 'Urgent' : 'High',\n  'Needs Reprint': false,\n  'Reprint Count': (fields['Reprint Count'] || 0) + 1,\n  'Hold Reason': `Reprint requested: ${reprintRequest.reason}. Original: ${reprintRequest.productionId}`,\n  'QC Status': 'Pending',\n  'Stage Progress': 0\n};\n\n// Update original production\nconst originalUpdate = {\n  id: originalProduction.id,\n  fields: {\n    'Production Status': 'Reprint Requested',\n    'Needs Reprint': true,\n    'Issue Notes': `${reprintRequest.reason}: ${reprintRequest.notes || 'No additional notes'}`\n  }\n};\n\nreturn [{\n  json: {\n    reprintData,\n    originalUpdate,\n    originalItemId: fields['Order Item']?.[0],\n    batchId: fields['Linked Batch']?.[0]\n  }\n}];"
+        },
+        "id": "0cfb6c54-df56-4b65-9817-3ccfe5004953",
+        "name": "Prepare Reprint Record",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -680,
+          1540
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "create",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblKmtH1t8EhgkBT9",
+            "mode": "list",
+            "cachedResultName": "Productions"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": "={{ $json.reprintData }}"
+          },
+          "options": {}
+        },
+        "id": "7f95c578-061c-4624-952c-343175c80682",
+        "name": "Create Reprint Production",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -480,
+          1540
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "get-queue-status",
+          "options": {}
+        },
+        "id": "cf531f42-7dc2-42a8-b082-6d7d79672f80",
+        "name": "Get Queue Status",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1280,
+          1740
+        ],
+        "webhookId": "get-queue-status-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get queue status for facility\nconst input = $input.first().json;\nconst { facility = 'all' } = input.body || input;\n\n// Build filter for active batches\nlet filterFormula = `AND(\n  OR(\n    {Batch Status} = 'Queued',\n    {Batch Status} = 'In Production',\n    {Batch Status} = 'Printing'\n  ),\n  {Batch Status} != 'Completed',\n  {Batch Status} != 'Cancelled'\n)`;\n\n// Add facility filter if specified\nif (facility !== 'all') {\n  filterFormula = `AND(\n    ${filterFormula},\n    {Facility} = '${facility}'\n  )`;\n}\n\nreturn [{\n  json: {\n    filterFormula,\n    facility\n  }\n}];"
+        },
+        "id": "15347b4c-5c00-436c-b891-7a02aeb1004a",
+        "name": "Prepare Queue Query",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1080,
+          1740
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl72WQOQ6Hre1sNK",
+            "mode": "list",
+            "cachedResultName": "Batches"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {}
+        },
+        "id": "2ca64239-f164-4958-9b6e-45410717852e",
+        "name": "Get Queue Batches",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -880,
+          1740
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Format queue status response\nconst batches = $('Get Queue Batches').all();\nconst facility = $('Prepare Queue Query').first().json.facility;\n\n// Process batch data\nconst queueData = batches.map((batch, index) => {\n  const fields = batch.json.fields;\n  \n  // Calculate estimated wait time based on position\n  const avgBatchTime = 2; // hours per batch (adjust based on your data)\n  const estimatedStartHours = index * avgBatchTime;\n  const estimatedStart = new Date(Date.now() + estimatedStartHours * 60 * 60 * 1000);\n  \n  return {\n    batchId: batch.json.id,\n    batchName: fields['Batch Name'],\n    facility: fields['Facility'],\n    status: fields['Batch Status'],\n    priority: fields['Priority'],\n    priorityScore: fields['Dynamic Priority Score'],\n    queuePosition: fields['Queue Position'] || index + 1,\n    printType: fields['Print Type'],\n    totalQuantity: fields['Total Quantity'],\n    totalItems: fields['Total Items'],\n    orderCount: fields['Total Orders'],\n    estimatedStart: estimatedStart.toISOString(),\n    estimatedHoursToStart: estimatedStartHours,\n    isOverdue: fields['Is Overdue'],\n    createdAt: fields['Created'],\n    mixedProducts: fields['Mixed Product Types']\n  };\n});\n\n// Group by status\nconst grouped = {\n  queued: queueData.filter(b => b.status === 'Queued'),\n  inProduction: queueData.filter(b => ['In Production', 'Printing'].includes(b.status)),\n  upcoming: queueData.slice(0, 5) // Next 5 batches\n};\n\n// Calculate summary statistics\nconst summary = {\n  totalBatches: queueData.length,\n  queuedBatches: grouped.queued.length,\n  activeBatches: grouped.inProduction.length,\n  estimatedQueueTime: queueData.length * avgBatchTime,\n  urgentBatches: queueData.filter(b => b.priority === 'Urgent').length,\n  overdueBatches: queueData.filter(b => b.isOverdue).length\n};\n\nreturn [{\n  json: {\n    success: true,\n    facility,\n    timestamp: new Date().toISOString(),\n    summary,\n    queue: queueData,\n    grouped,\n    nextBatch: queueData[0] || null\n  }\n}];"
+        },
+        "id": "b1943caf-b79c-45fd-af1b-6f37aa426fe5",
+        "name": "Format Queue Status",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -680,
+          1740
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "d4b3f819-6368-4fc6-adf5-8c22d845e262",
+        "name": "Respond to Webhook2",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          -280,
+          1640
+        ]
+      },
+      {
+        "parameters": {
+          "path": "get-shipping-queue",
+          "options": {}
+        },
+        "id": "705cbbe9-0bd0-4432-9e7e-9850cdb4a506",
+        "name": "Get Shipping Queue",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1300,
+          2760
+        ],
+        "webhookId": "get-shipping-queue-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get orders ready to ship\nconst filterFormula = `AND(\n  OR(\n    {Order Status} = 'Ready to Ship',\n    {Order Status} = 'Completed'\n  ),\n  {Tracking Number} = BLANK(),\n  {Production Progress} >= 100\n)`;\n\nreturn [{\n  json: {\n    filterFormula\n  }\n}];"
+        },
+        "id": "9961c6c8-5653-42a2-9c47-3c7f824550e2",
+        "name": "Prepare Shipping Query",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1100,
+          2760
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl2XIKxHAG7e9BFS",
+            "mode": "list",
+            "cachedResultName": "Orders"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {}
+        },
+        "id": "cf204c2c-7bfd-4dc5-8c99-39e52defbef6",
+        "name": "Get Shipping Orders",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -900,
+          2760
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Format shipping queue\nconst orders = $('Get Shipping Orders').all();\n\nconst shippingQueue = orders.map(order => {\n  const fields = order.json.fields;\n  \n  // Calculate days since order\n  const orderDate = new Date(fields['Order Date']);\n  const daysSinceOrder = Math.floor((Date.now() - orderDate.getTime()) / (1000 * 60 * 60 * 24));\n  \n  return {\n    orderId: order.json.id,\n    orderNumber: fields['Order ID'],\n    customerName: fields['Customer Name'],\n    shippingAddress: {\n      street: fields['Shipping Street'],\n      city: fields['Shipping City'],\n      state: fields['Shipping State'],\n      zip: fields['Shipping Zip'],\n      country: fields['Shipping Country'] || 'US'\n    },\n    shippingMethod: fields['Shipping Method'],\n    rushService: fields['Rush Service'] === 'Rush',\n    itemCount: fields['Order Items']?.length || 0,\n    orderTotal: fields['Total $'],\n    daysSinceOrder,\n    priority: fields['Rush Service'] === 'Rush' ? 'high' : daysSinceOrder > 5 ? 'high' : 'normal',\n    weight: estimateWeight(fields['Order Items']?.length || 0),\n    packageType: 'standard'\n  };\n});\n\n// Group by shipping method\nconst grouped = {};\nshippingQueue.forEach(order => {\n  const method = order.shippingMethod || 'Standard';\n  if (!grouped[method]) grouped[method] = [];\n  grouped[method].push(order);\n});\n\n// Helper function to estimate weight\nfunction estimateWeight(itemCount) {\n  return (itemCount * 0.5 + 0.5).toFixed(1);\n}\n\nreturn [{\n  json: {\n    success: true,\n    totalOrders: shippingQueue.length,\n    orders: shippingQueue,\n    groupedByMethod: grouped,\n    summary: {\n      standard: grouped['Standard']?.length || 0,\n      express: grouped['Express']?.length || 0,\n      overnight: grouped['Overnight']?.length || 0,\n      local: grouped['Local Delivery']?.length || 0\n    }\n  }\n}];"
+        },
+        "id": "c841b133-346a-4b51-a41f-b2611f6972d5",
+        "name": "Format Shipping Queue",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -700,
+          2760
+        ]
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "get-production-metrics",
+          "options": {}
+        },
+        "id": "874d492c-794a-46c3-b380-a894002d61ae",
+        "name": "Get Production Metrics",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1300,
+          3060
+        ],
+        "webhookId": "get-production-metrics-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Get production metrics\nconst input = $input.first().json;\nconst { dateRange = 'today', facility = 'all' } = input.body || input;\n\n// Calculate date filter\nlet dateFilter = '';\n\nswitch(dateRange) {\n  case 'today':\n    dateFilter = `IS_SAME({Created}, TODAY(), 'day')`;\n    break;\n  case 'week':\n    dateFilter = `{Created} >= DATEADD(TODAY(), -7, 'days')`;\n    break;\n  case 'month':\n    dateFilter = `{Created} >= DATEADD(TODAY(), -30, 'days')`;\n    break;\n  default:\n    dateFilter = `IS_SAME({Created}, TODAY(), 'day')`;\n}\n\n// Build filter\nlet filterFormula = dateFilter;\nif (facility !== 'all') {\n  filterFormula = `AND(${dateFilter}, {Printer Used} = '${facility}')`;\n}\n\nreturn [{\n  json: {\n    filterFormula,\n    dateRange,\n    facility\n  }\n}];"
+        },
+        "id": "4a681a16-ef93-4be5-8a3d-d2c8e7e25b31",
+        "name": "Prepare Metrics Query",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1100,
+          3060
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblKmtH1t8EhgkBT9",
+            "mode": "list",
+            "cachedResultName": "Productions"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {
+            "fields": [
+              "Production ID",
+              "Production Status",
+              "Created",
+              "Print Started",
+              "Print Completed",
+              "Ship Completed",
+              "Defect Found",
+              "Needs Reprint",
+              "Priority",
+              "Is Overdue",
+              "Total Time (Hours)"
+            ]
+          }
+        },
+        "id": "714667e0-f920-4943-9329-614f83843852",
+        "name": "Get Production Records",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -900,
+          3060
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Calculate production metrics\nconst productions = $('Get Production Records').all();\nconst query = $('Prepare Metrics Query').first().json;\n\n// Initialize metrics\nconst metrics = {\n  totalItems: productions.length,\n  completed: 0,\n  inProgress: 0,\n  pending: 0,\n  defects: 0,\n  reprints: 0,\n  overdue: 0,\n  avgCycleTime: 0,\n  onTimeRate: 0,\n  defectRate: 0,\n  byStatus: {},\n  byPriority: {},\n  hourlyProduction: {}\n};\n\n// Process each production record\nlet totalCycleTime = 0;\nlet completedWithTime = 0;\n\nproductions.forEach(prod => {\n  const fields = prod.json.fields;\n  const status = fields['Production Status'];\n  \n  // Count by status\n  metrics.byStatus[status] = (metrics.byStatus[status] || 0) + 1;\n  \n  if (status === 'Completed') {\n    metrics.completed++;\n  } else if (['Printing', 'Quality Check', 'Cutting'].includes(status)) {\n    metrics.inProgress++;\n  } else if (status === 'Pending') {\n    metrics.pending++;\n  }\n  \n  // Count defects and reprints\n  if (fields['Defect Found']) metrics.defects++;\n  if (fields['Needs Reprint']) metrics.reprints++;\n  if (fields['Is Overdue']) metrics.overdue++;\n  \n  // Count by priority\n  const priority = fields['Priority'] || 'Standard';\n  metrics.byPriority[priority] = (metrics.byPriority[priority] || 0) + 1;\n  \n  // Calculate cycle time for completed items\n  if (fields['Print Started'] && fields['Ship Completed']) {\n    const cycleTime = (new Date(fields['Ship Completed']) - new Date(fields['Print Started'])) / (1000 * 60 * 60);\n    totalCycleTime += cycleTime;\n    completedWithTime++;\n  }\n  \n  // Track hourly production\n  if (fields['Ship Completed']) {\n    const hour = new Date(fields['Ship Completed']).getHours();\n    metrics.hourlyProduction[hour] = (metrics.hourlyProduction[hour] || 0) + 1;\n  }\n});\n\n// Calculate rates\nif (completedWithTime > 0) {\n  metrics.avgCycleTime = (totalCycleTime / completedWithTime).toFixed(1);\n}\n\nif (metrics.totalItems > 0) {\n  metrics.defectRate = ((metrics.defects / metrics.totalItems) * 100).toFixed(1);\n  metrics.onTimeRate = (((metrics.totalItems - metrics.overdue) / metrics.totalItems) * 100).toFixed(1);\n}\n\n// Calculate throughput\nconst throughput = {\n  itemsPerHour: query.dateRange === 'today' \n    ? (metrics.completed / (new Date().getHours() || 1)).toFixed(1)\n    : (metrics.completed / 24).toFixed(1),\n  utilizationRate: ((metrics.inProgress / 10) * 100).toFixed(1)\n};\n\nreturn [{\n  json: {\n    success: true,\n    dateRange: query.dateRange,\n    facility: query.facility,\n    timestamp: new Date().toISOString(),\n    metrics: {\n      ...metrics,\n      throughput\n    },\n    summary: {\n      totalProduction: metrics.totalItems,\n      completionRate: metrics.totalItems > 0 ? ((metrics.completed / metrics.totalItems) * 100).toFixed(1) : 0,\n      qualityRate: metrics.totalItems > 0 ? (((metrics.totalItems - metrics.defects) / metrics.totalItems) * 100).toFixed(1) : 0,\n      efficiency: throughput.utilizationRate\n    }\n  }\n}];"
+        },
+        "id": "1380a71d-09c3-4a8a-aa34-6a4e312c3b72",
+        "name": "Calculate Metrics",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -700,
+          3060
+        ]
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "update-priority",
+          "options": {}
+        },
+        "id": "d1fecb60-3e9d-49fc-971c-27909deca864",
+        "name": "Update Priority",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1300,
+          3360
+        ],
+        "webhookId": "update-priority-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Update batch priority\nconst input = $input.first().json;\nconst { batchId, newPriority, reason } = input.body || input;\n\n// Validate inputs\nif (!batchId || !newPriority) {\n  return [{\n    json: {\n      success: false,\n      error: 'Missing required fields: batchId and newPriority'\n    }\n  }];\n}\n\nconst validPriorities = ['Standard', 'High', 'Urgent'];\nif (!validPriorities.includes(newPriority)) {\n  return [{\n    json: {\n      success: false,\n      error: `Invalid priority. Must be one of: ${validPriorities.join(', ')}`\n    }\n  }];\n}\n\n// Calculate new priority score\nconst priorityScores = {\n  'Standard': 1,\n  'High': 5,\n  'Urgent': 10\n};\n\nconst updateData = {\n  'Priority': newPriority,\n  'Dynamic Priority Score': priorityScores[newPriority] * 100\n};\n\nif (reason) {\n  updateData['Internal Notes'] = `Priority changed to ${newPriority}: ${reason}`;\n}\n\nreturn [{\n  json: {\n    batchId,\n    updateData\n  }\n}];"
+        },
+        "id": "4204abc4-b92f-4944-90d2-72f637e7b6ea",
+        "name": "Process Priority Update",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1100,
+          3360
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl72WQOQ6Hre1sNK",
+            "mode": "list",
+            "cachedResultName": "Batches"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.batchId }}",
+              "Priority": "={{ $json.updateData.Priority }}",
+              "Dynamic Priority Score": "={{ $json.updateData['Dynamic Priority Score'] }}",
+              "Internal Notes": "={{ $json.updateData['Internal Notes'] }}"
+            },
+            "matchingColumns": [
+              "id"
+            ]
+          },
+          "options": {}
+        },
+        "id": "d9c00ec5-bc29-436c-9504-01e2f4417fa9",
+        "name": "Update Batch Priority",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -900,
+          3360
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Return success response\nconst updateResult = $('Update Batch Priority').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Priority updated successfully',\n    batchId: updateResult.id,\n    newPriority: updateResult.fields?.Priority\n  }\n}];"
+        },
+        "id": "3a5740b1-c2c0-46aa-80f6-433cb1fa18ba",
+        "name": "Format Priority Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -700,
+          3360
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "851440ba-bbe4-4461-9d49-767e1d45d184",
+        "name": "Respond to Webhook3",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          -500,
+          3060
+        ]
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "production-stage-scan",
+          "options": {}
+        },
+        "id": "d4a8440c-7267-4a7b-86d6-63b7a63116d6",
+        "name": "Production Stage Scan",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1260,
+          -1620
+        ],
+        "webhookId": "prod-stage-scan-002"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Enhanced Production Stage Handler\n// Place this in your \"Process Stage Scan v2\" node\n\nconst input = $input.first().json;\nconst { qrCode, productionId, stage, action = 'complete', operator, notes, printer } = input.body || input;\n\n// Handle both QR scan and manual input\nlet prodId = null;\nif (qrCode && qrCode.startsWith('PROD:')) {\n  prodId = qrCode.replace('PROD:', '');\n} else if (productionId) {\n  prodId = productionId;\n} else {\n  throw new Error('No production ID provided');\n}\n\n// Current timestamp\nconst now = new Date().toISOString();\n\n// Stage configuration matching your schema\nconst stageUpdates = {\n  'print': {\n    'start': {\n      fields: { \n        'Print Started': now, \n        'Production Status': 'Printing',\n        'Printer Used': printer || null \n      },\n      progress: 0,\n      itemStatus: 'In Production'\n    },\n    'complete': {\n      fields: { 'Print Completed': now, 'Production Status': 'Print Complete' },\n      progress: 25,\n      itemStatus: null\n    }\n  },\n  'qc': {\n    'complete': {\n      fields: { 'QC Completed': now, 'QC Status': 'Passed', 'Production Status': 'QC Complete' },\n      progress: 50,\n      itemStatus: 'Quality Check'\n    }\n  },\n  'cut': {\n    'complete': {\n      fields: { 'Cut Completed': now, 'Production Status': 'Cut Complete' },\n      progress: 75,\n      itemStatus: null\n    }\n  },\n  'ship': {\n    'complete': {\n      fields: { 'Ship Completed': now, 'Production Status': 'Completed' },\n      progress: 100,\n      itemStatus: 'Ready to Ship'\n    }\n  }\n};\n\n// Get update configuration\nconst update = stageUpdates[stage.toLowerCase()]?.[action];\nif (!update) {\n  throw new Error(`Invalid stage/action: ${stage}/${action}`);\n}\n\n// Build scan history entry\nconst scanEntry = `${now} - ${stage} ${action} by ${operator || 'System'}${printer ? ` on ${printer}` : ''}${notes ? ` - ${notes}` : ''}`;\n\n// Build filter to find record\nconst filterFormula = `{Production ID} = '${prodId}'`;\n\nreturn [{\n  json: {\n    filterFormula,\n    updateFields: {\n      ...update.fields,\n      'Stage Progress': update.progress,\n      'Operator': operator,\n      'Last Modified': now\n    },\n    scanHistoryEntry: scanEntry,\n    itemStatus: update.itemStatus,\n    stage: stage.toLowerCase(),\n    action\n  }\n}];"
+        },
+        "id": "3181c39e-b390-44b6-91df-b8b0eb0faa84",
+        "name": "Process Stage Scan v2",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1060,
+          -1620
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblXXXXXXXXXXXX",
+            "mode": "list",
+            "cachedResultName": "Production"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {}
+        },
+        "id": "4f8829a3-5e3a-400c-a1a4-bfde105c5d64",
+        "name": "Find Production Record",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -860,
+          -1620
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Update Production Record and Scan History\nconst records = $('Find Production Record').all();\nconst scanData = $('Process Stage Scan v2').first().json;\n\nif (records.length === 0) {\n  return [{\n    json: {\n      error: 'No production record found',\n      filter: scanData.filterFormula\n    }\n  }];\n}\n\nconst record = records[0].json;\nconst recordId = record.id;\n\n// Get existing scan history\nlet scanHistory = record.fields?.['Scan History'] || '';\nif (scanHistory) {\n  scanHistory += '\\n' + scanData.scanHistoryEntry;\n} else {\n  scanHistory = scanData.scanHistoryEntry;\n}\n\n// Add scan history to update\nconst updateFields = {\n  ...scanData.updateData,\n  'Scan History': scanHistory\n};\n\n// Check if this completes the item\nconst orderItemId = record.fields?.['Order Item']?.[0];\nlet newItemStatus = null;\n\nif (scanData.stage === 'print' && scanData.action === 'start') {\n  newItemStatus = 'In Production';\n} else if (scanData.stage === 'qc' && scanData.action === 'complete') {\n  newItemStatus = 'Quality Check';\n} else if (scanData.stage === 'ship' && scanData.action === 'complete') {\n  newItemStatus = 'Ready to Ship';\n}\n\nreturn [{\n  json: {\n    recordId,\n    updateFields,\n    orderItemId,\n    newItemStatus,\n    batchId: record.fields?.['Linked Batch']?.[0]\n  }\n}];"
+        },
+        "id": "de5ec2bd-5cf7-4d34-9757-608eaecf6598",
+        "name": "Prepare Record Update",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -660,
+          -1620
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblXXXXXXXXXXXX",
+            "mode": "list",
+            "cachedResultName": "Production"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.recordId }}",
+              "Print Started": "={{ $json.updateFields['Print Started'] }}",
+              "Print Completed": "={{ $json.updateFields['Print Completed'] }}",
+              "QC Completed": "={{ $json.updateFields['QC Completed'] }}",
+              "Cut Completed": "={{ $json.updateFields['Cut Completed'] }}",
+              "Ship Completed": "={{ $json.updateFields['Ship Completed'] }}",
+              "Stage Progress": "={{ $json.updateFields['Stage Progress'] }}",
+              "Production Status": "={{ $json.updateFields['Production Status'] }}",
+              "Operator": "={{ $json.updateFields['Operator'] }}",
+              "Scan History": "={{ $json.updateFields['Scan History'] }}",
+              "Last Modified": "={{ $json.updateFields['Last Modified'] }}"
+            },
+            "matchingColumns": [
+              "id"
+            ]
+          },
+          "options": {}
+        },
+        "id": "825e65f9-19b2-400c-a9c0-b9af34e678a1",
+        "name": "Update Production Record v2",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -460,
+          -1620
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "check-item-status",
+                "leftValue": "={{ $json.newItemStatus }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "isNotEmpty"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "5cbb3ec5-1b82-459b-80af-d54c7b0a5491",
+        "name": "Should Update Item?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -460,
+          -1420
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblTN1vUIpu6HHqEL",
+            "mode": "list",
+            "cachedResultName": "Order Items"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.orderItemId }}",
+              "Item Status": "={{ $json.newItemStatus }}"
+            },
+            "matchingColumns": [
+              "id"
+            ]
+          },
+          "options": {}
+        },
+        "id": "224ae1cc-4006-43d8-8ee7-a41608bf780f",
+        "name": "Update Order Item Status v2",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -260,
+          -1420
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "production-qc-update",
+          "options": {}
+        },
+        "id": "69dbb8e9-c8f4-4381-81c2-92b2f03e4eb7",
+        "name": "QC Update Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1260,
+          -1220
+        ],
+        "webhookId": "prod-qc-update-002"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process QC Results\nconst input = $input.first().json;\nconst { productionId, qcStatus, defectFound, defectType, issueNotes, needsReprint, operator } = input.body || input;\n\n// Validate inputs\nif (!productionId || !qcStatus) {\n  return [{\n    json: {\n      error: 'Missing required fields: productionId, qcStatus',\n      received: input\n    }\n  }];\n}\n\n// Build update data\nconst updateData = {\n  'QC Status': qcStatus, // Should be: Passed, Failed, Partial Pass\n  'QC Completed': new Date().toISOString(),\n  'Defect Found': defectFound || false,\n  'Stage Progress': 50, // QC complete = 50%\n  'Last Modified': new Date().toISOString()\n};\n\n// Add optional fields\nif (defectType) updateData['Defect Type'] = defectType;\nif (issueNotes) updateData['Issue Notes'] = issueNotes;\nif (needsReprint !== undefined) updateData['Needs Reprint'] = needsReprint;\nif (operator) updateData['Operator'] = operator;\n\n// Update production status based on QC result\nif (qcStatus === 'Failed' && needsReprint) {\n  updateData['Production Status'] = 'Needs Reprint';\n} else if (qcStatus === 'Passed') {\n  updateData['Production Status'] = 'Quality Check';\n}\n\n// Add to scan history\nconst scanEntry = `${new Date().toISOString()} - QC ${qcStatus} by ${operator || 'Unknown'}${defectFound ? ` (Defect: ${defectType})` : ''}`;\n\nreturn [{\n  json: {\n    filterFormula: `RECORD_ID() = '${productionId}'`,\n    updateData,\n    scanHistoryEntry: scanEntry,\n    needsReprintBatch: qcStatus === 'Failed' && needsReprint\n  }\n}];"
+        },
+        "id": "a3fae66c-b80a-4c7a-961d-d2ee68bf887e",
+        "name": "Process QC Update",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1060,
+          -1220
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Prepare QC Update for Production Record\nconst qcData = $('Process QC Update').first().json;\nconst records = $('Find Production Record').all();\n\nif (records.length === 0) {\n  return [{\n    json: {\n      error: 'No production record found',\n      productionId: qcData.productionId\n    }\n  }];\n}\n\nconst record = records[0].json;\nconst recordId = record.id;\n\n// Get existing values\nlet scanHistory = record.fields?.['Scan History'] || '';\nlet reprintCount = record.fields?.['Reprint Count'] || 0;\n\n// Add to scan history\nif (scanHistory) {\n  scanHistory += '\\n' + qcData.scanHistoryEntry;\n} else {\n  scanHistory = qcData.scanHistoryEntry;\n}\n\n// Increment reprint count if needed\nif (qcData.needsReprintBatch && record.fields?.['Needs Reprint']) {\n  reprintCount++;\n}\n\n// Merge QC update data with scan history\nconst updateFields = {\n  ...qcData.updateData,\n  'Scan History': scanHistory,\n  'Reprint Count': reprintCount\n};\n\nreturn [{\n  json: {\n    recordId,\n    updateFields,\n    needsReprintBatch: qcData.needsReprintBatch\n  }\n}];"
+        },
+        "id": "13e06285-43c3-4200-a60e-ceaa2f637708",
+        "name": "Prepare QC Record Update",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -660,
+          -1220
+        ]
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "batch-facility-validation",
+          "options": {}
+        },
+        "id": "ef6bf27b-ae95-4174-9454-93bb59c06797",
+        "name": "Batch Validation Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1260,
+          -740
+        ],
+        "webhookId": "batch-facility-validation-001"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process validation request\nconst input = $input.first().json;\nconst { productionId, facility } = input.body || input;\n\n// Validate inputs\nif (!productionId || !facility) {\n  return [{\n    json: {\n      valid: false,\n      message: 'Missing production ID or facility'\n    }\n  }];\n}\n\n// Validate facility name\nconst validFacilities = ['CHICO', 'OUTPOST'];\nif (!validFacilities.includes(facility.toUpperCase())) {\n  return [{\n    json: {\n      valid: false,\n      message: `Invalid facility. Must be CHICO or OUTPOST`\n    }\n  }];\n}\n\n// Build filter to find production record\n// Handle both formats: 'P093' or 'PROD:P093'\nconst cleanId = productionId.replace('PROD:', '');\nconst filterFormula = `{Production ID} = '${cleanId}'`;\n\nreturn [{\n  json: {\n    filterFormula,\n    facility: facility.toUpperCase(),\n    productionId: cleanId,\n    originalInput: productionId\n  }\n}];"
+        },
+        "id": "b09537a4-896b-4952-b244-15c90d4ca8e2",
+        "name": "Process Validation Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1060,
+          -740
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Check if production record was found\nconst productionRecords = $('Find Production Record1').all();\nconst requestData = $('Process Validation Request').first().json;\n\nif (productionRecords.length === 0) {\n  return [{\n    json: {\n      valid: false,\n      message: `Production record ${requestData.productionId} not found`,\n      productionId: requestData.productionId\n    }\n  }];\n}\n\nconst production = productionRecords[0].json;\nconst batchId = production.fields?.['Linked Batch']?.[0];\n\nif (!batchId) {\n  return [{\n    json: {\n      valid: false,\n      message: 'Production record has no assigned batch',\n      productionId: requestData.productionId\n    }\n  }];\n}\n\n// Continue to fetch batch details\nreturn [{\n  json: {\n    batchId,\n    filterFormula: `RECORD_ID() = '${batchId}'`,\n    facility: requestData.facility,\n    productionId: requestData.productionId,\n    productionStatus: production.fields?.['Production Status']\n  }\n}];"
+        },
+        "id": "c1e011d2-680b-45cd-b2b2-f8170d695906",
+        "name": "Check Production Exists",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -660,
+          -740
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "batch-exists",
+                "leftValue": "={{ $json.batchId }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "isNotEmpty"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "3a969919-76f8-4e1f-a0e7-6ac920d9fb80",
+        "name": "Has Batch?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -460,
+          -740
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl72WQOQ6Hre1sNK",
+            "mode": "list",
+            "cachedResultName": "Batches",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tbl72WQOQ6Hre1sNK"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {
+            "fields": [
+              "Batch Name",
+              "Facility",
+              "Batch Status",
+              "Print Type"
+            ]
+          }
+        },
+        "id": "e1b398a7-8000-4966-b62d-40ad12c2fe90",
+        "name": "Get Batch Record",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -260,
+          -760
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Validate facility assignment\nconst batchRecords = $('Get Batch Record').all();\nconst validationData = $('Check Production Exists').first().json;\n\nif (batchRecords.length === 0) {\n  return [{\n    json: {\n      valid: false,\n      message: 'Batch record not found',\n      batchId: validationData.batchId\n    }\n  }];\n}\n\nconst batch = batchRecords[0].json;\nconst batchFacility = batch.fields?.['Facility'];\nconst requestedFacility = validationData.facility;\n\n// Check if facility matches\nconst valid = batchFacility === requestedFacility;\n\nreturn [{\n  json: {\n    valid,\n    message: valid \n      ? 'Valid assignment' \n      : `This item is assigned to ${batchFacility || 'no facility'}, not ${requestedFacility}`,\n    productionId: validationData.productionId,\n    batchName: batch.fields?.['Batch Name'],\n    batchFacility,\n    requestedFacility,\n    batchStatus: batch.fields?.['Batch Status'],\n    productionStatus: validationData.productionStatus\n  }\n}];"
+        },
+        "id": "406cc83f-fb71-4246-9f73-de94d42505d7",
+        "name": "Validate Facility Match",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -60,
+          -760
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblKmtH1t8EhgkBT9",
+            "mode": "list",
+            "cachedResultName": "Productions",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblKmtH1t8EhgkBT9"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {
+            "fields": [
+              "Production ID",
+              "Linked Batch",
+              "Order Item",
+              "Production Status"
+            ]
+          }
+        },
+        "id": "292fc4f2-4bfb-4638-8070-b99b06344a99",
+        "name": "Find Production Record1",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -860,
+          -740
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "273e55ff-ccff-4278-9c19-4f9c7f9979e8",
+        "name": "Respond to Webhook4",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          140,
+          -740
+        ]
+      },
+      {
+        "parameters": {
+          "content": "## ✅ 5. Confirm Pickup Webhook\n\n### 📝 **Sticky Note: Pickup Confirmation**\n```yaml\nPURPOSE: Records customer pickup completion\nENDPOINT: /webhook/confirm-pickup\nMETHOD: POST\nTRIGGER: Pickup app scan/signature\n\nCONNECTS TO:\n- Orders table (updates)\n- Should create Pickup Log record\n\nKEY MAPPINGS:\n- orderId → Order record\n- Updates:\n  - Pickup Confirmed = now\n  - Order Status = \"Picked Up\"\n  - Internal Notes += pickup details\n\nPAYLOAD EXAMPLE:\n{\n  \"orderId\": \"recXXXXX\",\n  \"pickupCode\": \"PU-1234\",\n  \"confirmedBy\": \"John Doe\",\n  \"signature\": \"base64...\",\n  \"photo\": \"base64...\"\n}\n\nCRITICAL NOTES:\n- Signature can be base64 image\n- Add to Internal Notes for audit\n- Consider separate Pickup Log table\n```\n",
+          "height": 640,
+          "width": 740,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -260,
+          460
+        ],
+        "id": "19b5f433-83db-4f57-b1e9-b4e8dac640ad",
+        "name": "Sticky Note4"
+      },
+      {
+        "parameters": {
+          "content": "## 📊 7. Queue Status Webhook\n\n### 📝 **Sticky Note: Production Queue**\n```yaml\nPURPOSE: Shows current batch queue by facility\nENDPOINT: /webhook/get-queue-status\nMETHOD: POST\nTRIGGER: Queue monitors, dashboards\n\nCONNECTS TO:\n- Batches table\n- Filters active batches only\n\nKEY MAPPINGS:\n- Batch Status in [\"Queued\", \"In Production\"]\n- Facility filter if specified\n- Sort by Queue Position, Priority Score\n\nPAYLOAD EXAMPLE:\n{\n  \"facility\": \"CHICO\"  // or \"all\"\n}\n\nRETURNS:\n- Queue array with positions\n- Estimated start times\n- Summary statistics\n- Next batch details\n\nCALCULATIONS:\n- estimatedStart = position * 2 hours\n- Group by status\n- Count urgent/overdue\n\nCRITICAL NOTES:\n- Real-time queue visibility\n- 2-hour estimate per batch (adjust)\n- Highlight overdue items\n```",
+          "height": 720,
+          "width": 560
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -60,
+          1300
+        ],
+        "id": "63773bb0-a450-4833-a743-5caff1961e53",
+        "name": "Sticky Note6"
+      }
+    ],
+    "connections": {
+      "Get Order Status": {
+        "main": [
+          [
+            {
+              "node": "Process Order Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Order Request": {
+        "main": [
+          [
+            {
+              "node": "Find Order",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Order": {
+        "main": [
+          [
+            {
+              "node": "Process Order Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Order Data": {
+        "main": [
+          [
+            {
+              "node": "Has Order Items?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Order Items?": {
+        "main": [
+          [
+            {
+              "node": "Get Order Items",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Order Items": {
+        "main": [
+          [
+            {
+              "node": "Prepare Production Lookup",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Production Lookup": {
+        "main": [
+          [
+            {
+              "node": "Has Productions?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Productions?": {
+        "main": [
+          [
+            {
+              "node": "Get Productions",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Compile Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Productions": {
+        "main": [
+          [
+            {
+              "node": "Compile Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Compile Response": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Pickup Ready List": {
+        "main": [
+          [
+            {
+              "node": "Prepare Pickup Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Pickup Query": {
+        "main": [
+          [
+            {
+              "node": "Get Ready Orders",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Ready Orders": {
+        "main": [
+          [
+            {
+              "node": "Format Pickup List",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Pickup List": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Confirm Pickup": {
+        "main": [
+          [
+            {
+              "node": "Process Pickup Confirmation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Pickup Confirmation": {
+        "main": [
+          [
+            {
+              "node": "Update Order Pickup",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Order Pickup": {
+        "main": [
+          [
+            {
+              "node": "Create Pickup Log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Pickup Log": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Request Reprint": {
+        "main": [
+          [
+            {
+              "node": "Process Reprint Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Reprint Request": {
+        "main": [
+          [
+            {
+              "node": "Find Production for Reprint",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Production for Reprint": {
+        "main": [
+          [
+            {
+              "node": "Prepare Reprint Record",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Reprint Record": {
+        "main": [
+          [
+            {
+              "node": "Create Reprint Production",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Reprint Production": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Queue Status": {
+        "main": [
+          [
+            {
+              "node": "Prepare Queue Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Queue Query": {
+        "main": [
+          [
+            {
+              "node": "Get Queue Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Queue Batches": {
+        "main": [
+          [
+            {
+              "node": "Format Queue Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Queue Status": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Shipping Queue": {
+        "main": [
+          [
+            {
+              "node": "Prepare Shipping Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Shipping Query": {
+        "main": [
+          [
+            {
+              "node": "Get Shipping Orders",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Shipping Orders": {
+        "main": [
+          [
+            {
+              "node": "Format Shipping Queue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Shipping Queue": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Production Metrics": {
+        "main": [
+          [
+            {
+              "node": "Prepare Metrics Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Metrics Query": {
+        "main": [
+          [
+            {
+              "node": "Get Production Records",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Production Records": {
+        "main": [
+          [
+            {
+              "node": "Calculate Metrics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Calculate Metrics": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Priority": {
+        "main": [
+          [
+            {
+              "node": "Process Priority Update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Priority Update": {
+        "main": [
+          [
+            {
+              "node": "Update Batch Priority",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Batch Priority": {
+        "main": [
+          [
+            {
+              "node": "Format Priority Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Priority Response": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Production Stage Scan": {
+        "main": [
+          [
+            {
+              "node": "Process Stage Scan v2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Stage Scan v2": {
+        "main": [
+          [
+            {
+              "node": "Find Production Record",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Production Record": {
+        "main": [
+          [
+            {
+              "node": "Prepare Record Update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Record Update": {
+        "main": [
+          [
+            {
+              "node": "Update Production Record v2",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Should Update Item?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Should Update Item?": {
+        "main": [
+          [
+            {
+              "node": "Update Order Item Status v2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "QC Update Webhook": {
+        "main": [
+          [
+            {
+              "node": "Process QC Update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process QC Update": {
+        "main": [
+          [
+            {
+              "node": "Find Production Record",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare QC Record Update": {
+        "main": [
+          [
+            {
+              "node": "Update Production Record v2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Batch Validation Webhook": {
+        "main": [
+          [
+            {
+              "node": "Process Validation Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Validation Request": {
+        "main": [
+          [
+            {
+              "node": "Find Production Record1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Production Exists": {
+        "main": [
+          [
+            {
+              "node": "Has Batch?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Batch?": {
+        "main": [
+          [
+            {
+              "node": "Get Batch Record",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond to Webhook4",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Batch Record": {
+        "main": [
+          [
+            {
+              "node": "Validate Facility Match",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Facility Match": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook4",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Production Record1": {
+        "main": [
+          [
+            {
+              "node": "Check Production Exists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {},
+    "meta": {
+      "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+    }
+  }

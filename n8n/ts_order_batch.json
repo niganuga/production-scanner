@@ -1,0 +1,4129 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        },
+        "id": "434d05bb-30e6-47e6-8915-784367eae302",
+        "name": "Schedule Trigger - 15min",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -1740,
+          1180
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Create or Update Order Production Status Records\nconst orderGroups = $('Group Ready Items').all()[0].json.orderGroups || new Map();\nconst config = $('Batch Configuration').first().json;\nconst PRODUCTION_RATES = config.PRODUCTION_RATES;\n\n// Get existing Order Production Status records\nconst statusTable = base.getTable('Order Production Status');\nconst existingStatuses = await statusTable.selectRecordsAsync({\n  fields: ['Order ID']\n});\n\nconst existingOrderIds = new Set(\n  existingStatuses.records.map(r => r.getCellValue('Order ID')?.[0]?.id)\n);\n\n// Calculate production estimates\nfunction estimateProductionTime(items) {\n  let totalTime = PRODUCTION_RATES.Setup || 15;\n  \n  items.forEach(item => {\n    const productType = item['Normalized Product Type'] || 'DTF';\n    const quantity = item.Quantity || 1;\n    const rate = PRODUCTION_RATES[productType] || 2;\n    totalTime += quantity * rate;\n  });\n  \n  return totalTime;\n}\n\n// Create updates for each order\nconst statusUpdates = [];\n\nfor (const [orderId, orderData] of orderGroups) {\n  const totalItems = orderData.items.length;\n  const itemsQueued = orderData.items.filter(i => i['Item Status'] === 'Queued').length;\n  const itemsInProduction = orderData.items.filter(i => i['Item Status'] === 'In Production').length;\n  const itemsCompleted = orderData.items.filter(i => i['Item Status'] === 'Completed').length;\n  \n  const completionPercent = Math.round((itemsCompleted / totalItems) * 100);\n  const estimatedMinutes = estimateProductionTime(orderData.items);\n  const estimatedCompletion = new Date(Date.now() + estimatedMinutes * 60000);\n  \n  const statusData = {\n    'Order ID': [{id: orderId}],\n    'Total Items': totalItems,\n    'Items Queued': itemsQueued,\n    'Items In Production': itemsInProduction,\n    'Items Completed': itemsCompleted,\n    'Completion %': completionPercent,\n    'Estimated Completion': estimatedCompletion,\n    'Status': itemsCompleted === totalItems ? 'Completed' : \n              itemsInProduction > 0 ? 'In Production' : \n              itemsQueued > 0 ? 'Queued' : 'Awaiting Batch',\n    'Last Updated': new Date()\n  };\n  \n  if (existingOrderIds.has(orderId)) {\n    // Update existing\n    statusUpdates.push({\n      type: 'update',\n      orderId: orderId,\n      data: statusData\n    });\n  } else {\n    // Create new\n    statusUpdates.push({\n      type: 'create',\n      data: statusData\n    });\n  }\n}\n\nreturn statusUpdates;"
+        },
+        "id": "9b5aebb0-5f68-424b-9daf-ad650205cb77",
+        "name": "Update Order Status",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          180,
+          1100
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "upsert",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblvBUk4CuCgImoWc",
+            "mode": "list",
+            "cachedResultName": "Order Production Status",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblvBUk4CuCgImoWc"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "Order ID": "={{ $json.data['Order ID'] }}",
+              "Estimated Completion": "={{ $json.data['Estimated Completion'] }}"
+            },
+            "matchingColumns": [
+              "Order ID"
+            ],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Id",
+                "displayName": "Id",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Current Facility",
+                "displayName": "Current Facility",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Estimated Start",
+                "displayName": "Estimated Start",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Estimated Completion",
+                "displayName": "Estimated Completion",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Actual Start",
+                "displayName": "Actual Start",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Actual Completion",
+                "displayName": "Actual Completion",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Production Notes",
+                "displayName": "Production Notes",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Behind Schedule",
+                "displayName": "Behind Schedule",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Order ID",
+                "displayName": "Order ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batches",
+                "displayName": "Batches",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "dfbc1c57-d784-4227-b59f-b4217ccf0724",
+        "name": "Upsert Order Status",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          340,
+          1100
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblIWVpsJiOF5VZQE",
+            "mode": "list",
+            "cachedResultName": "Batches",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblIWVpsJiOF5VZQE"
+          },
+          "filterByFormula": "AND({Batch Status} != 'Complete', {Batch Status} != 'Failed')",
+          "options": {
+            "fields": [
+              "Batch Name",
+              "Priority",
+              "Created",
+              "Batch Status",
+              "Queue Position",
+              "Total Quantity",
+              "Facility",
+              "Print Type",
+              "Estimated Start Time",
+              "Estimated Completion Time"
+            ]
+          }
+        },
+        "id": "79f4977c-ecd7-4722-a783-13cf6b533364",
+        "name": "Get Existing Batches",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -1040,
+          1380
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Recalculate Queue Positions for All Active Batches\nconst config = $('Batch Configuration').first().json;\nconst QUEUE_SETTINGS = config.QUEUE_SETTINGS;\nconst PRODUCTION_RATES = config.PRODUCTION_RATES;\n\n// Get existing batches\nconst existingBatches = $input.all().map(item => item.json);\n\n// Calculate dynamic priority with age bonus\nfunction calculateDynamicPriority(batch) {\n  const now = new Date();\n  const created = new Date(batch.Created);\n  const ageInHours = (now - created) / (1000 * 60 * 60);\n  const ageBonus = Math.min(ageInHours * QUEUE_SETTINGS.AGE_BONUS_PER_HOUR, QUEUE_SETTINGS.MAX_AGE_BONUS);\n  \n  // Base priority scores\n  let basePriority = 0;\n  if (batch.Priority === 'Urgent') basePriority = 10000;\n  else if (batch.Priority === 'High') basePriority = 5000;\n  else basePriority = 1000;\n  \n  return basePriority + ageBonus;\n}\n\n// Estimate production time for a batch\nfunction estimateProductionTime(batch) {\n  const quantity = batch['Total Quantity'] || 0;\n  const productType = batch['Print Type'] || 'DTF';\n  const rate = PRODUCTION_RATES[productType] || PRODUCTION_RATES['DTF'];\n  return PRODUCTION_RATES.Setup + (quantity * rate);\n}\n\n// Separate batches by status and facility\nconst batchesByFacility = {\n  'CHICO': { inProgress: [], queued: [] },\n  'OUTPOST': { inProgress: [], queued: [] }\n};\n\nexistingBatches.forEach(batch => {\n  const status = batch['Batch Status'];\n  const facility = batch.Facility || (batch['Batch Name']?.includes('CHICO') ? 'CHICO' : 'OUTPOST');\n  \n  const batchData = {\n    id: batch.id,\n    name: batch['Batch Name'],\n    priority: batch.Priority,\n    created: batch.Created,\n    quantity: batch['Total Quantity'],\n    productType: batch['Print Type'],\n    dynamicPriority: calculateDynamicPriority(batch),\n    estimatedTime: estimateProductionTime(batch),\n    currentPosition: batch['Queue Position']\n  };\n  \n  if (status === 'Printing' || status === 'In Progress') {\n    batchesByFacility[facility].inProgress.push(batchData);\n  } else if (status === 'Created' || status === 'Queued') {\n    batchesByFacility[facility].queued.push(batchData);\n  }\n});\n\n// Process each facility separately\nconst updates = [];\n\nObject.entries(batchesByFacility).forEach(([facility, batches]) => {\n  // Sort queued batches by dynamic priority\n  batches.queued.sort((a, b) => b.dynamicPriority - a.dynamicPriority);\n  \n  // Calculate positions and times\n  let position = batches.inProgress.length + 1;\n  let cumulativeTime = batches.inProgress.reduce((sum, b) => sum + b.estimatedTime, 0);\n  \n  batches.queued.forEach(batch => {\n    const estimatedStart = new Date(Date.now() + cumulativeTime * 60000);\n    const estimatedCompletion = new Date(estimatedStart.getTime() + batch.estimatedTime * 60000);\n    \n    updates.push({\n      id: batch.id,\n      fields: {\n        'Queue Position': position,\n        'Estimated Start Time': estimatedStart.toISOString(),\n        'Estimated Completion Time': estimatedCompletion.toISOString(),\n        'Dynamic Priority Score': Math.round(batch.dynamicPriority)\n      }\n    });\n    \n    position++;\n    cumulativeTime += batch.estimatedTime;\n  });\n});\n\nconsole.log(`Queue Recalculation Summary:`);\nconsole.log(`- CHICO: ${batchesByFacility.CHICO.inProgress.length} in progress, ${batchesByFacility.CHICO.queued.length} queued`);\nconsole.log(`- OUTPOST: ${batchesByFacility.OUTPOST.inProgress.length} in progress, ${batchesByFacility.OUTPOST.queued.length} queued`);\nconsole.log(`- Total updates: ${updates.length}`);\n\nreturn updates;"
+        },
+        "id": "5d96aea6-5d85-47a0-a72e-36df98ff1cd3",
+        "name": "Recalculate All Queues",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1040,
+          1620
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblIWVpsJiOF5VZQE",
+            "mode": "list",
+            "cachedResultName": "Batches",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblIWVpsJiOF5VZQE"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.id }}",
+              "Queue Position": "={{ $json.fields['Queue Position'] }}",
+              "Estimated Start Time": "={{ $json.fields['Estimated Start Time'] }}",
+              "Estimated Completion Time": "={{ $json.fields['Estimated Completion Time'] }}",
+              "Dynamic Priority Score": "={{ $json.fields['Dynamic Priority Score'] }"
+            },
+            "matchingColumns": [
+              "id"
+            ]
+          },
+          "options": {}
+        },
+        "id": "56252ee4-3d7f-4f66-96cf-5529daa06e5b",
+        "name": "Update Queue Positions",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -820,
+          1620
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "upsert",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblIWVpsJiOF5VZQE",
+            "mode": "list",
+            "cachedResultName": "Batches",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblIWVpsJiOF5VZQE"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "Batch Name": "={{ $json[\"Batch Name\"] }}",
+              "Batch Status": "={{ $json['Batch Status'] }}",
+              "Priority": "={{ $json['Priority'] }}",
+              "Print Type": "={{ \n  $json[\"Print Type\"]?.includes(\"DTF\") ? \"DTF\" : \n  $json[\"Print Type\"]?.includes(\"UV\") ? \"UV\" : \n  $json[\"Print Type\"]?.includes(\"Sublimation\") ? \"Sublimation\" : \n  $json[\"Print Type\"]?.includes(\"Mixed\") ? \"Mixed\" : \n  \"\" \n}}",
+              "Created": "={{ $json['Created'] }}",
+              "Internal Notes": "={{ $json['Internal Notes'] }}",
+              "Stage History": "={{ $json['Stage History'] }}",
+              "Mixed Product Types": "={{ $json['Mixed Product Types'] }}",
+              "Queue Position": "={{ $json[\"Queue Position\"] }}",
+              "Linked Order Item": "={{ $json[\"Order Items\"] }}"
+            },
+            "matchingColumns": [
+              "Batch Name"
+            ],
+            "schema": [
+              {
+                "id": "Batch ID",
+                "displayName": "Batch ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Batch Name",
+                "displayName": "Batch Name",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Status",
+                "displayName": "Batch Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Created",
+                    "value": "Created"
+                  },
+                  {
+                    "name": "Printing",
+                    "value": "Printing"
+                  },
+                  {
+                    "name": "Complete",
+                    "value": "Complete"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Created",
+                "displayName": "Created",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Print Type",
+                "displayName": "Print Type",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "DTF",
+                    "value": "DTF"
+                  },
+                  {
+                    "name": "Sublimation",
+                    "value": "Sublimation"
+                  },
+                  {
+                    "name": "UV",
+                    "value": "UV"
+                  },
+                  {
+                    "name": "Mixed",
+                    "value": "Mixed"
+                  },
+                  {
+                    "name": "DTF Gang Sheet",
+                    "value": "DTF Gang Sheet"
+                  },
+                  {
+                    "name": "UV Gang Sheet",
+                    "value": "UV Gang Sheet"
+                  },
+                  {
+                    "name": "Sublimation Gang Sheet",
+                    "value": "Sublimation Gang Sheet"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Priority",
+                "displayName": "Priority",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Urgent",
+                    "value": "Urgent"
+                  },
+                  {
+                    "name": "High",
+                    "value": "High"
+                  },
+                  {
+                    "name": "Normal",
+                    "value": "Normal"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Linked Order Item",
+                "displayName": "Linked Order Item",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Linked Production",
+                "displayName": "Linked Production",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Print Started (from Production Records)",
+                "displayName": "Print Started (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Print Completed (from Production Records)",
+                "displayName": "Print Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "QC Completed (from Production Records)",
+                "displayName": "QC Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Cut Completed (from Production Records)",
+                "displayName": "Cut Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Ship Completed (from Production Records)",
+                "displayName": "Ship Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Printer Used",
+                "displayName": "Printer Used",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Status Color",
+                "displayName": "Status Color",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Batch QR String",
+                "displayName": "Batch QR String",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Batch QR Code",
+                "displayName": "Batch QR Code",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Sheet PDF",
+                "displayName": "Batch Sheet PDF",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Material Length",
+                "displayName": "Material Length",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Material Cost",
+                "displayName": "Material Cost",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Batch Completed",
+                "displayName": "Batch Completed",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "QC Status",
+                "displayName": "QC Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Pending",
+                    "value": "Pending"
+                  },
+                  {
+                    "name": "Passed",
+                    "value": "Passed"
+                  },
+                  {
+                    "name": "Failed",
+                    "value": "Failed"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "QC Notes",
+                "displayName": "QC Notes",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Internal Notes",
+                "displayName": "Internal Notes",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Stage History",
+                "displayName": "Stage History",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Total Items",
+                "displayName": "Total Items",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Total Orders",
+                "displayName": "Total Orders",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Total Quantity",
+                "displayName": "Total Quantity",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Production Time",
+                "displayName": "Production Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Queue Position",
+                "displayName": "Queue Position",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Facility",
+                "displayName": "Facility",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Operator",
+                "displayName": "Operator",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Defect Count",
+                "displayName": "Defect Count",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Reprint Items",
+                "displayName": "Reprint Items",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Days Old",
+                "displayName": "Days Old",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Is Overdue",
+                "displayName": "Is Overdue",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Completion %",
+                "displayName": "Completion %",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Completed Items",
+                "displayName": "Completed Items",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Last Modified",
+                "displayName": "Last Modified",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Linked Order",
+                "displayName": "Linked Order",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Order ID",
+                "displayName": "Order ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Mixed Product Types",
+                "displayName": "Mixed Product Types",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Dynamic Priority Score",
+                "displayName": "Dynamic Priority Score",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Estimated Start Time",
+                "displayName": "Estimated Start Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Estimated Completion Time",
+                "displayName": "Estimated Completion Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Actual Start Time",
+                "displayName": "Actual Start Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Actual Completion Time",
+                "displayName": "Actual Completion Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Order IDs",
+                "displayName": "Order IDs",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Order Production Status",
+                "displayName": "Order Production Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Autonumber",
+                "displayName": "Autonumber",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Orders",
+                "displayName": "Orders",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {
+            "typecast": true
+          }
+        },
+        "id": "c525295d-1c82-4d0b-b1e0-e42efa02c25b",
+        "name": "Create Batches in Airtable",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          940,
+          1640
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Prepare Order Items Update with Batch IDs\nconst batchesCreated = $('Create Batches in Airtable').all();\nconst itemUpdates = [];\n\n// Log to debug what we're getting\nconsole.log(`Processing ${batchesCreated.length} batch responses`);\n\n// Process all batches (whether created or updated)\nfor (let i = 0; i < batchesCreated.length; i++) {\n  const batch = batchesCreated[i];\n  \n  // Airtable upsert returns the record with id and fields\n  // The structure should be: { id: \"rec...\", fields: { ... }, createdTime: \"...\" }\n  \n  if (!batch.json || !batch.json.id) {\n    console.log(`Batch ${i} has no valid ID, skipping`);\n    continue;\n  }\n  \n  const batchId = batch.json.id;\n  const fields = batch.json.fields || {};\n  \n  // Get the batch details we need\n  const batchName = fields['Batch Name'];\n  const queuePosition = fields['Queue Position'];\n  const linkedOrderItems = fields['Linked Order Item'] || [];\n  \n  console.log(`Batch: ${batchName} (${batchId}) has ${linkedOrderItems.length} linked items`);\n  \n  // Update each linked order item\n  if (linkedOrderItems.length > 0) {\n    for (const itemId of linkedOrderItems) {\n      itemUpdates.push({\n        json: {\n          id: itemId,\n          fields: {\n            'Batch ID': [batchId],  // Array since it's a linked record field\n            'Item Status': 'In Production',\n            'Batch Name': batchName,\n            'Queue Position': queuePosition,\n            'Last Updated': new Date().toISOString()\n          }\n        }\n      });\n    }\n  }\n}\n\n// Return results\nif (itemUpdates.length === 0) {\n  console.log('No order items found to update');\n  return [{\n    json: {\n      message: 'No items to update',\n      batchesProcessed: batchesCreated.length,\n      timestamp: new Date().toISOString(),\n      debug: batchesCreated.length > 0 ? JSON.stringify(batchesCreated[0].json, null, 2) : 'No batches'\n    }\n  }];\n}\n\nconsole.log(`Prepared ${itemUpdates.length} order items for update`);\nreturn itemUpdates;"
+        },
+        "id": "3d06b35c-6b63-492a-88aa-873e31d29b59",
+        "name": "Prepare Item Updates",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1200,
+          1540
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblTN1vUIpu6HHqEL",
+            "mode": "list",
+            "cachedResultName": "Order Items",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblTN1vUIpu6HHqEL"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.id }}",
+              "Item Status": "={{ $json.fields['Item Status'] }}",
+              "Total Cost (formula)": 0,
+              "Batch ID": "={{ $json.fields[\"Batch ID\"] }}"
+            },
+            "matchingColumns": [
+              "id"
+            ],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true
+              },
+              {
+                "id": "Order Item ID",
+                "displayName": "Order Item ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Record ID",
+                "displayName": "Record ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Item UID",
+                "displayName": "Item UID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Product Type",
+                "displayName": "Product Type",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Sublimation Gang Sheet",
+                    "value": "Sublimation Gang Sheet"
+                  },
+                  {
+                    "name": "DTF Gang Sheet",
+                    "value": "DTF Gang Sheet"
+                  },
+                  {
+                    "name": "DTF Transfers",
+                    "value": "DTF Transfers"
+                  },
+                  {
+                    "name": "UV Gang Sheet",
+                    "value": "UV Gang Sheet"
+                  },
+                  {
+                    "name": "UV Stickers",
+                    "value": "UV Stickers"
+                  },
+                  {
+                    "name": "Sublimation",
+                    "value": "Sublimation"
+                  },
+                  {
+                    "name": "Pre-cut DTF",
+                    "value": "Pre-cut DTF"
+                  },
+                  {
+                    "name": "Pre-cut UV",
+                    "value": "Pre-cut UV"
+                  },
+                  {
+                    "name": "Pre-cut Sublimation",
+                    "value": "Pre-cut Sublimation"
+                  },
+                  {
+                    "name": "Sample Pack",
+                    "value": "Sample Pack"
+                  },
+                  {
+                    "name": "Alignment Tool",
+                    "value": "Alignment Tool"
+                  },
+                  {
+                    "name": "Heat Press",
+                    "value": "Heat Press"
+                  },
+                  {
+                    "name": "Accessories",
+                    "value": "Accessories"
+                  }
+                ],
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Quantity",
+                "displayName": "Quantity",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Unit Price",
+                "displayName": "Unit Price",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Dimensions (in)",
+                "displayName": "Dimensions (in)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Needs File",
+                "displayName": "Needs File",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "File URL",
+                "displayName": "File URL",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Attachment",
+                "displayName": "Attachment",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Item Status",
+                "displayName": "Item Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "New",
+                    "value": "New"
+                  },
+                  {
+                    "name": "Pending Art",
+                    "value": "Pending Art"
+                  },
+                  {
+                    "name": "Art Received",
+                    "value": "Art Received"
+                  },
+                  {
+                    "name": "Ready for Production",
+                    "value": "Ready for Production"
+                  },
+                  {
+                    "name": "In Production",
+                    "value": "In Production"
+                  },
+                  {
+                    "name": "Quality Check",
+                    "value": "Quality Check"
+                  },
+                  {
+                    "name": "Ready to Ship",
+                    "value": "Ready to Ship"
+                  },
+                  {
+                    "name": "Ready for Pickup",
+                    "value": "Ready for Pickup"
+                  },
+                  {
+                    "name": "Shipped",
+                    "value": "Shipped"
+                  },
+                  {
+                    "name": "Picked Up",
+                    "value": "Picked Up"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Print Facility",
+                "displayName": "Print Facility",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "CHICO",
+                    "value": "CHICO"
+                  },
+                  {
+                    "name": "OUTPOST",
+                    "value": "OUTPOST"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Printer Assignment",
+                "displayName": "Printer Assignment",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "C2",
+                    "value": "C2"
+                  },
+                  {
+                    "name": "D2",
+                    "value": "D2"
+                  },
+                  {
+                    "name": "U2",
+                    "value": "U2"
+                  },
+                  {
+                    "name": "S2",
+                    "value": "S2"
+                  },
+                  {
+                    "name": "D6",
+                    "value": "D6"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Meta (JSON)",
+                "displayName": "Meta (JSON)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Artwork QC",
+                "displayName": "Artwork QC",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Pending",
+                    "value": "Pending"
+                  },
+                  {
+                    "name": "Approved",
+                    "value": "Approved"
+                  },
+                  {
+                    "name": "Rejected",
+                    "value": "Rejected"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "QC Notes",
+                "displayName": "QC Notes",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "QC Improvement Suggestions",
+                "displayName": "QC Improvement Suggestions",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Total Cost (formula)",
+                "displayName": "Total Cost (formula)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Print Status",
+                "displayName": "Batch Print Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Not Printed",
+                    "value": "Not Printed"
+                  },
+                  {
+                    "name": "Queued",
+                    "value": "Queued"
+                  },
+                  {
+                    "name": "Printed",
+                    "value": "Printed"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Ready for Batch",
+                "displayName": "Ready for Batch",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Production Location",
+                "displayName": "Production Location",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Line Item ID",
+                "displayName": "Line Item ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Product ID",
+                "displayName": "Product ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Variant ID",
+                "displayName": "Variant ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "SKU",
+                "displayName": "SKU",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Title",
+                "displayName": "Title",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "File Name",
+                "displayName": "File Name",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Original File URL",
+                "displayName": "Original File URL",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "File DPI",
+                "displayName": "File DPI",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "File Dimensions",
+                "displayName": "File Dimensions",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Is Precut",
+                "displayName": "Is Precut",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Precut Qty",
+                "displayName": "Precut Qty",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Cutline References",
+                "displayName": "Cutline References",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Is Gang Sheet",
+                "displayName": "Is Gang Sheet",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Gang Sheet Length",
+                "displayName": "Gang Sheet Length",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Requires Shipping",
+                "displayName": "Requires Shipping",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Fulfillable Quantity",
+                "displayName": "Fulfillable Quantity",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Linked Order",
+                "displayName": "Linked Order",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Rush Service",
+                "displayName": "Rush Service",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Order ID",
+                "displayName": "Order ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Linked Files",
+                "displayName": "Linked Files",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Linked Shipment",
+                "displayName": "Linked Shipment",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Linked Production",
+                "displayName": "Linked Production",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch ID",
+                "displayName": "Batch ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Name",
+                "displayName": "Batch Name",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Has Batch",
+                "displayName": "Has Batch",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Autonumber",
+                "displayName": "Autonumber",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "COGS",
+                "displayName": "COGS",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Overall QC Status",
+                "displayName": "Overall QC Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Processed File URL",
+                "displayName": "Processed File URL",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Preview URL",
+                "displayName": "Preview URL",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "File Color Mode",
+                "displayName": "File Color Mode",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "RGB",
+                    "value": "RGB"
+                  },
+                  {
+                    "name": "",
+                    "value": ""
+                  }
+                ],
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Compare At Price",
+                "displayName": "Compare At Price",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "Total Discount",
+                "displayName": "Total Discount",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "a6a07748-ad70-411c-bd06-d2c831bd2a70",
+        "name": "Update Order Items",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          1380,
+          1540
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "authentication": "oAuth2",
+          "select": "user",
+          "user": {
+            "__rl": true,
+            "value": "UEUHY79LJ",
+            "mode": "list",
+            "cachedResultName": "info"
+          },
+          "messageType": "block",
+          "blocksUi": "={{ \n{\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"✅ Order-Centric Batches Created\",\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": `*${$('Create Batches in Airtable').all().length} new batches created*\\n\\nOrder-centric batching keeps order items together when possible.`\n      }\n    },\n    {\n      \"type\": \"divider\"\n    },\n    ...$('Create Batches in Airtable').all().slice(0, 5).map(batch => {\n      const orderCount = batch.json.groupData['Order IDs']?.length || 1;\n      return {\n        \"type\": \"section\",\n        \"text\": {\n          \"type\": \"mrkdwn\",\n          \"text\": `*${batch.json.fields['Batch Name']}*\\n• Queue Position: ${batch.json.fields['Queue Position']}\\n• Items: ${batch.json.fields['Total Items']} from ${orderCount} order(s)\\n• Priority: ${batch.json.fields['Priority']}\\n• Type: ${batch.json.fields['Print Type']}${batch.json.fields['Mixed Product Types'] ? ' (Mixed)' : ''}`\n        }\n      }\n    }),\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": `${$('Create Batches in Airtable').all().length > 5 ? `\\n_...and ${$('Create Batches in Airtable').all().length - 5} more batches_` : ''}`\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"View Batches\",\n            \"emoji\": true\n          },\n          \"url\": \"https://airtable.com/appZdp18sltDYOs4s/tblIWVpsJiOF5VZQE\",\n          \"style\": \"primary\"\n        }\n      ]\n    }\n  ]\n}\n}}",
+          "otherOptions": {}
+        },
+        "id": "dbb603d5-bf8c-4086-8f97-2900098d4c86",
+        "name": "Slack - Batches Created",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.1,
+        "position": [
+          940,
+          1860
+        ],
+        "webhookId": "59760254-a59f-48e7-b0a2-3e7e741b4747",
+        "credentials": {
+          "slackOAuth2Api": {
+            "id": "qgdOe5uhawQ2SGAC",
+            "name": "Slack account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Check for Behind Schedule Orders\nconst orderStatusUpdates = $('Update Order Status').all();\nconst now = new Date();\nconst behindSchedule = [];\n\norderStatusUpdates.forEach(update => {\n  const data = update.json.data;\n  const estimatedCompletion = new Date(data['Estimated Completion']);\n  const completionPercent = data['Completion %'] || 0;\n  \n  // Check if behind schedule\n  if (estimatedCompletion < now && completionPercent < 100) {\n    const hoursLate = Math.round((now - estimatedCompletion) / (1000 * 60 * 60));\n    \n    behindSchedule.push({\n      orderId: data['Order ID'][0].id,\n      orderNumber: data['Order ID'][0].name || 'Unknown',\n      estimatedCompletion: estimatedCompletion,\n      hoursLate: hoursLate,\n      completionPercent: completionPercent,\n      status: data['Status'],\n      itemsCompleted: data['Items Completed'],\n      totalItems: data['Total Items']\n    });\n  }\n});\n\nif (behindSchedule.length > 0) {\n  return [{\n    json: {\n      behindScheduleCount: behindSchedule.length,\n      orders: behindSchedule\n    }\n  }];\n} else {\n  return [{\n    json: {\n      message: \"All orders on schedule\",\n      behindScheduleCount: 0\n    }\n  }];\n}"
+        },
+        "id": "54828e69-8631-4cc3-b4f7-25fe15b31d1a",
+        "name": "Check Behind Schedule",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          520,
+          1100
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "check-behind",
+                "leftValue": "={{ $json.behindScheduleCount }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "larger"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "156ef085-524e-4536-bbf5-834dc45cb198",
+        "name": "Has Behind Schedule?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          720,
+          1100
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "oAuth2",
+          "select": "user",
+          "user": {
+            "__rl": true,
+            "value": "UEUHY79LJ",
+            "mode": "list",
+            "cachedResultName": "info"
+          },
+          "messageType": "block",
+          "blocksUi": "={{ \n{\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"🚨 Orders Behind Schedule\",\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": `*${$json.behindScheduleCount} orders are behind schedule*`\n      }\n    },\n    {\n      \"type\": \"divider\"\n    },\n    ...$json.orders.slice(0, 5).map(order => ({\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": `*Order ${order.orderNumber}*\\n• ${order.hoursLate} hours late\\n• ${order.completionPercent}% complete (${order.itemsCompleted}/${order.totalItems} items)\\n• Status: ${order.status}`\n      }\n    })),\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"View Production Status\",\n            \"emoji\": true\n          },\n          \"url\": \"https://airtable.com/appZdp18sltDYOs4s/ORDER_PRODUCTION_STATUS_TABLE\",\n          \"style\": \"danger\"\n        }\n      ]\n    }\n  ]\n}\n}}",
+          "otherOptions": {}
+        },
+        "id": "beb0e9e6-9ac8-461a-af22-426aa33f928b",
+        "name": "Slack - Behind Schedule Alert",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.1,
+        "position": [
+          960,
+          1080
+        ],
+        "webhookId": "a9ed3c29-c787-480a-965b-6af68d58ce10",
+        "credentials": {
+          "slackOAuth2Api": {
+            "id": "qgdOe5uhawQ2SGAC",
+            "name": "Slack account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "check-items",
+                "leftValue": "={{ $items.length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "larger"
+                }
+              },
+              {
+                "id": "e78f5547-38de-43c5-949c-6b24419f2879",
+                "leftValue": "={{ $items.length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "or"
+          },
+          "options": {}
+        },
+        "id": "8559cf92-19f7-4fb5-9135-e9f3c9696553",
+        "name": "Items Found?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -1140,
+          1180
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Enhanced Batch Configuration with Order Grouping\nreturn [{\n  json: {\n    // Order grouping configuration\n    ORDER_GROUPING: {\n      STRATEGY: 'KEEP_ORDER_TOGETHER', // Options: 'KEEP_ORDER_TOGETHER', 'SPLIT_BY_FACILITY', 'SPLIT_BY_TYPE'\n      ALLOW_MIXED_TYPES: true, // Allow different product types in same batch if from same order\n      MAX_BATCH_SIZE: 50, // Maximum items in a single batch\n      SPLIT_LARGE_ORDERS: true // Split orders > MAX_BATCH_SIZE\n    },\n    \n    // Dynamic queue settings\n    QUEUE_SETTINGS: {\n      RECALCULATE_ON_NEW_ORDER: true,\n      PRESERVE_IN_PROGRESS: true, // Don't reorder batches already printing\n      AGE_BONUS_PER_HOUR: 100, // Priority points added per hour of age\n      MAX_AGE_BONUS: 2000 // Maximum age bonus\n    },\n    \n    PRIORITY_SCORES: {\n      BASE: 1000,\n      SOURCES: {\n        'jiffy': 8000,\n        'shopify': 0,\n        'jotform': 0,\n        'custom': 0\n      },\n      SHIPPING: {\n        'overnight': 9000,\n        'express': 6000,\n        'will_call': 3000,\n        'standard': 0\n      },\n      RUSH_SERVICE: {\n        'Super Rush 24 hrs': 10000,\n        'Rush 1-2 Days': 7000,\n        'Standard': 0\n      },\n      FEATURES: {\n        'pre_cut': 5000,\n        'gang_sheet_required': 2000\n      },\n      TAGS: {\n        'vip': 2500,\n        'rush': 1500,\n        'wholesale': 1000,\n        'high-value': 1000,\n        'repeat-customer': 500\n      },\n      PRIORITY_LEVELS: {\n        'High': 4000,\n        'Medium': 2000,\n        'Low': 0\n      },\n      FORCE_BATCH: 50000\n    },\n    \n    BATCH_THRESHOLDS: [\n      { minScore: 50000, threshold: 1, name: 'Force Batch' },\n      { minScore: 10000, threshold: 1, name: 'Super Rush' },\n      { minScore: 9000, threshold: 1, name: 'Overnight' },\n      { minScore: 8000, threshold: 2, name: 'Jiffy' },\n      { minScore: 7000, threshold: 3, name: 'Rush 1-2' },\n      { minScore: 6000, threshold: 5, name: 'Express' },\n      { minScore: 5000, threshold: 10, name: 'Pre-cut' },\n      { minScore: 0, threshold: 20, name: 'Normal' }\n    ],\n    \n    // Production time estimates (minutes per item)\n    PRODUCTION_RATES: {\n      'DTF': 2,\n      'UV': 3,\n      'Sublimation': 4,\n      'DTF Gang Sheet': 1.5,\n      'UV Gang Sheet': 2.5,\n      'Setup': 15 // Fixed setup time per batch\n    },\n    \n    // Normalized product type mapping\n    PRODUCT_TYPE_MAPPING: {\n      'DTF': 'DTF',\n      'DTF Transfer': 'DTF',\n      'DTF Transfers': 'DTF',\n      'DTF Gang Sheet': 'DTF Gang Sheet',\n      'UV': 'UV',\n      'UV Sticker': 'UV',\n      'UV Stickers': 'UV',\n      'UV Gang Sheet': 'UV Gang Sheet',\n      'Sublimation': 'Sublimation',\n      'Sub': 'Sublimation',\n      'Color Swatch': 'Color Swatch',\n      'Heat Press': 'Heat Press',\n      'Matt Finishing Sheet': 'Matt Finishing Sheet'\n    },\n    \n    FACILITY_RULES: {\n      'jiffy': {\n        'DTF': { facility: 'CHICO', printer: 'C2' },\n        'DTF Gang Sheet': { facility: 'CHICO', printer: 'C2' },\n        'UV': { facility: 'OUTPOST', printer: 'U2' },\n        'UV Gang Sheet': { facility: 'OUTPOST', printer: 'U2' },\n        'Sublimation': { facility: 'OUTPOST', printer: 'S2' }\n      },\n      'shopify': {\n        'DTF': { facility: null, printer: null },\n        'DTF Gang Sheet': { facility: null, printer: null },\n        'UV': { facility: 'OUTPOST', printer: 'U2' },\n        'UV Gang Sheet': { facility: 'OUTPOST', printer: 'U2' },\n        'Sublimation': { facility: 'OUTPOST', printer: 'S2' }\n      }\n    },\n    \n    MACHINE_ASSIGNMENTS: {\n      'CHICO': {\n        'DTF': 'C2',\n        'DTF Gang Sheet': 'C2',\n        'default': 'C2'\n      },\n      'OUTPOST': {\n        'DTF': { primary: 'D2', backup: 'D6', distribution: 0.7 },\n        'DTF Gang Sheet': { primary: 'D2', backup: 'D6', distribution: 0.7 },\n        'UV': 'U2',\n        'UV Gang Sheet': 'U2',\n        'Sublimation': 'S2',\n        'default': 'D2'\n      }\n    },\n    \n    NON_PRINT_PRODUCTS: [\n      'Heat Press',\n      'Matt Finishing Sheet',\n      'Laser Alignment Tool',\n      'Heat Tape'\n    ],\n    \n    MANUAL_ASSIGNMENT_PRODUCTS: ['Color Swatch']\n  }\n}];"
+        },
+        "id": "5399378b-8a78-4898-98ca-7ea7b8375f32",
+        "name": "Batch Configuration",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1540,
+          1180
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblTN1vUIpu6HHqEL",
+            "mode": "list",
+            "cachedResultName": "Order Items",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblTN1vUIpu6HHqEL"
+          },
+          "filterByFormula": "AND({Item Status} = 'Ready for Production', NOT({Needs File}), {File URL} != '')",
+          "options": {}
+        },
+        "id": "d2517dc0-4ff3-4198-928b-205320f3735b",
+        "name": "Search Ready Items",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -1340,
+          1180
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Extract unique order IDs from items\nconst items = $input.all();\nconst orderIds = [...new Set(\n  items\n    .map(item => item.json['Linked Order']?.[0])\n    .filter(Boolean)\n)];\n\nif (orderIds.length === 0) {\n  return [{\n    json: {\n      message: \"No orders found\",\n      items: items\n    }\n  }];\n}\n\n// Create filter formula for batch retrieval\nconst filterFormula = 'OR(' + orderIds.map(id => `RECORD_ID() = '${id}'`).join(', ') + ')';\n\n// Fields we need from orders for the workflow\nconst orderFields = [\n  'Order ID',\n  'Source',\n  'Order Date',\n  'Customer Name',\n  'Email',\n  'Shipping Method',\n  'Rush Service',\n  'Order Tags',\n  'Order Status',\n  'Total $',\n  'Internal Notes',\n  'Pre-cut?',\n  'Force Batch'\n];\n\nreturn [{\n  json: {\n    filterFormula,\n    orderIds,\n    items: items.map(item => item.json),\n    fieldsToRetrieve: orderFields\n  }\n}];"
+        },
+        "id": "c2665844-9977-44ec-b5e6-5d053a262e71",
+        "name": "Get Order Details",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -940,
+          1080
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tbl2XIKxHAG7e9BFS",
+            "mode": "list",
+            "cachedResultName": "Orders",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tbl2XIKxHAG7e9BFS"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {}
+        },
+        "id": "8d37f675-4004-4b8f-9bd4-6af0b3ba7360",
+        "name": "Fetch Orders",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          -740,
+          1080
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Enhanced Auto-Assignment with Priority Scoring\nconst config = $('Batch Configuration').first().json;\nconst PRIORITY_SCORES = config.PRIORITY_SCORES;\nconst FACILITY_RULES = config.FACILITY_RULES;\nconst PRODUCT_TYPE_MAPPING = config.PRODUCT_TYPE_MAPPING;\nconst NON_PRINT_PRODUCTS = config.NON_PRINT_PRODUCTS || [];\nconst MANUAL_ASSIGNMENT_PRODUCTS = config.MANUAL_ASSIGNMENT_PRODUCTS || [];\n\n// Get items and orders\nconst itemsData = $('Get Order Details').first().json.items;\nconst orders = $input.all();\n\n// Create order map\nconst orderMap = new Map(orders.map(o => [o.json.id, o.json]));\n\n// Helper function to normalize product type\nfunction normalizeProductType(productType) {\n  if (!productType) return 'DTF';\n  \n  // Check mapping\n  for (const [key, value] of Object.entries(PRODUCT_TYPE_MAPPING)) {\n    if (key.toLowerCase() === productType.toLowerCase()) {\n      return value;\n    }\n  }\n  \n  // Fallback pattern matching\n  const lowerProduct = productType.toLowerCase();\n  if (lowerProduct.includes('uv')) {\n    return lowerProduct.includes('gang') || lowerProduct.includes('sheet') ? 'UV Gang Sheet' : 'UV';\n  }\n  if (lowerProduct.includes('dtf')) {\n    return lowerProduct.includes('gang') || lowerProduct.includes('sheet') ? 'DTF Gang Sheet' : 'DTF';\n  }\n  if (lowerProduct.includes('sub')) return 'Sublimation';\n  if (lowerProduct.includes('heat') && lowerProduct.includes('press')) return 'Heat Press';\n  \n  return 'DTF'; // default\n}\n\n// Enhanced auto-assignment logic using configuration\nconst assignedItems = itemsData.map(item => {\n  const order = orderMap.get(item['Linked Order']?.[0]);\n  if (!order) return item;\n  \n  const source = (order.Source || '').toLowerCase();\n  const originalProductType = item['Product Type'] || 'DTF Transfers';\n  const productType = normalizeProductType(originalProductType);\n  \n  // Check if this is a non-print product\n  const isNonPrint = NON_PRINT_PRODUCTS.includes(productType);\n  const needsManualProductAssignment = MANUAL_ASSIGNMENT_PRODUCTS.includes(productType);\n  \n  // Use facility rules from configuration\n  let facility = item['Print Facility'] || null;\n  let printerAssignment = item['Printer Assignment'] || null;\n  \n  // Only assign facility/printer if not a non-print product\n  if (!isNonPrint && FACILITY_RULES[source] && FACILITY_RULES[source][productType]) {\n    const rule = FACILITY_RULES[source][productType];\n    facility = rule.facility || facility;\n    printerAssignment = rule.printer || printerAssignment;\n  }\n  \n  // Calculate priority score using configuration\n  const scoreBreakdown = {\n    base: PRIORITY_SCORES.BASE,\n    source: 0,\n    shipping: 0,\n    rushService: 0,\n    features: 0,\n    tags: 0,\n    priorityLevel: 0,\n    forceBonus: 0\n  };\n  \n  // Source priority\n  scoreBreakdown.source = PRIORITY_SCORES.SOURCES[source] || 0;\n  \n  // Shipping method priority\n  const shipping = (order['Shipping Method'] || '').toLowerCase();\n  Object.entries(PRIORITY_SCORES.SHIPPING).forEach(([method, points]) => {\n    if (shipping.includes(method.replace('_', ' '))) {\n      scoreBreakdown.shipping = Math.max(scoreBreakdown.shipping, points);\n    }\n  });\n  \n  // Rush service\n  const rushService = order['Rush Service'] || '';\n  scoreBreakdown.rushService = PRIORITY_SCORES.RUSH_SERVICE[rushService] || 0;\n  \n  // Features\n  if (order['Pre-cut?']) scoreBreakdown.features += PRIORITY_SCORES.FEATURES.pre_cut;\n  if (order['Gang Sheet Required']) scoreBreakdown.features += PRIORITY_SCORES.FEATURES.gang_sheet_required;\n  \n  // Order tags\n  const tags = order['Order Tags'] || [];\n  if (Array.isArray(tags)) {\n    tags.forEach(tag => {\n      const tagLower = tag.toLowerCase();\n      Object.entries(PRIORITY_SCORES.TAGS).forEach(([tagKey, points]) => {\n        if (tagLower.includes(tagKey.replace('-', ' '))) {\n          scoreBreakdown.tags += points;\n        }\n      });\n    });\n  }\n  \n  // Priority level\n  const priorityLevel = order['Priority Level'] || '';\n  scoreBreakdown.priorityLevel = PRIORITY_SCORES.PRIORITY_LEVELS[priorityLevel] || 0;\n  \n  // Force Batch\n  if (order['Force Batch']) {\n    scoreBreakdown.forceBonus = PRIORITY_SCORES.FORCE_BATCH;\n  }\n  \n  // Calculate total score\n  const totalScore = Object.values(scoreBreakdown).reduce((sum, score) => sum + score, 0);\n  \n  // Determine if needs manual assignment\n  const needsManualAssignment = !isNonPrint && (\n    !facility || \n    (facility === 'OUTPOST' && !printerAssignment) ||\n    needsManualProductAssignment\n  );\n  \n  // Update item with assignments and score breakdown\n  return {\n    ...item,\n    'Product Type': originalProductType,\n    'Normalized Product Type': productType,\n    'Print Facility': facility,\n    'Printer Assignment': printerAssignment,\n    orderData: order,\n    orderId: order.id,\n    needsManualAssignment: needsManualAssignment,\n    isNonPrint: isNonPrint,\n    priorityScore: totalScore,\n    scoreBreakdown: scoreBreakdown,\n    forceBatch: order['Force Batch'] || false\n  };\n});\n\n// Return individual items\nreturn assignedItems.map(item => ({\n  json: item\n}));"
+        },
+        "id": "2bd360fe-67e2-4c05-add4-9ace6020fa3a",
+        "name": "Auto-Assign Facilities",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -540,
+          1080
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "check-manual",
+                "leftValue": "={{ $json.needsManualAssignment }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "5b5d8c47-83c1-471f-9c54-df7a1f45917d",
+        "name": "Need Manual Assignment?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -340,
+          1080
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "oAuth2",
+          "select": "user",
+          "user": {
+            "__rl": true,
+            "value": "UEUHY79LJ",
+            "mode": "list",
+            "cachedResultName": "info"
+          },
+          "messageType": "block",
+          "blocksUi": "={{ \n{\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"⚠️ Manual Assignment Required\",\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": `*${$items().length} items need manual facility/printer assignment*\\n\\nThese items are from Shopify, Custom, or Jotform orders and require manual assignment before batching.`\n      }\n    },\n    {\n      \"type\": \"divider\"\n    },\n    ...$items().slice(0, 10).map(item => ({\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": `*Order:* ${item.json.orderData?.['Order ID'] || 'Unknown'}\\n*Source:* ${item.json.orderData?.Source || 'Unknown'}\\n*Product:* ${item.json['Product Type']}\\n*Facility:* ${item.json['Print Facility'] || 'UNASSIGNED'}\\n*Printer:* ${item.json['Printer Assignment'] || 'UNASSIGNED'}`\n      }\n    })),\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": `${$items().length > 10 ? `\\n_...and ${$items().length - 10} more items_` : ''}`\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"Go to Airtable\",\n            \"emoji\": true\n          },\n          \"url\": \"https://airtable.com/appZdp18sltDYOs4s/tblTN1vUIpu6HHqEL\",\n          \"style\": \"primary\"\n        }\n      ]\n    }\n  ]\n}\n}}",
+          "otherOptions": {}
+        },
+        "id": "2a2e728a-c37a-4167-b35f-67c2778125ca",
+        "name": "Slack Alert - Manual Assignment",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.1,
+        "position": [
+          -520,
+          1300
+        ],
+        "webhookId": "6e79da18-5b65-402f-9bed-76863a1c6bf1",
+        "credentials": {
+          "slackOAuth2Api": {
+            "id": "qgdOe5uhawQ2SGAC",
+            "name": "Slack account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// ORDER-CENTRIC BATCHING - Groups items by order first\nconst config = $('Batch Configuration').first().json;\nconst ORDER_GROUPING = config.ORDER_GROUPING;\nconst BATCH_THRESHOLDS = config.BATCH_THRESHOLDS;\nconst NON_PRINT_PRODUCTS = config.NON_PRINT_PRODUCTS || [];\n\n// Get all items\nconst items = $input.all().map(item => item.json);\n\n// Filter out items that need manual assignment AND non-print products\nconst readyItems = items.filter(item => \n  !item.needsManualAssignment && \n  !item.isNonPrint &&\n  !NON_PRINT_PRODUCTS.includes(item['Normalized Product Type'] || item['Product Type'])\n);\n\n// GROUP BY ORDER FIRST\nconst orderGroups = new Map();\n\nreadyItems.forEach(item => {\n  const orderId = item.orderId || item['Linked Order']?.[0];\n  if (!orderId) return;\n  \n  if (!orderGroups.has(orderId)) {\n    orderGroups.set(orderId, {\n      orderId: orderId,\n      items: [],\n      facilities: new Set(),\n      productTypes: new Set(),\n      highestPriority: 0,\n      totalQuantity: 0,\n      forceBatch: false,\n      orderData: item.orderData\n    });\n  }\n  \n  const group = orderGroups.get(orderId);\n  group.items.push(item);\n  group.facilities.add(item['Print Facility'] || 'UNASSIGNED');\n  group.productTypes.add(item['Normalized Product Type'] || item['Product Type']);\n  group.highestPriority = Math.max(group.highestPriority, item.priorityScore || 0);\n  group.totalQuantity += item.Quantity || 0;\n  group.forceBatch = group.forceBatch || item.forceBatch;\n});\n\n// DETERMINE BATCHING STRATEGY FOR EACH ORDER\nconst readyGroups = [];\nconst pendingGroups = [];\n\nfor (const [orderId, orderGroup] of orderGroups) {\n  // Find the appropriate threshold\n  let requiredCount = 20;\n  for (const threshold of BATCH_THRESHOLDS) {\n    if (orderGroup.highestPriority >= threshold.minScore) {\n      requiredCount = threshold.threshold;\n      break;\n    }\n  }\n  \n  // Strategy 1: Keep order together if possible\n  if (orderGroup.facilities.size === 1 && orderGroup.totalQuantity <= ORDER_GROUPING.MAX_BATCH_SIZE) {\n    // Single facility, reasonable size - keep together\n    readyGroups.push({\n      key: `ORDER_${orderId}`,\n      items: orderGroup.items,\n      productType: orderGroup.productTypes.size > 1 ? 'Mixed' : Array.from(orderGroup.productTypes)[0],\n      facility: Array.from(orderGroup.facilities)[0],\n      priorityLevel: getPriorityLevel(orderGroup.highestPriority),\n      priorityScore: orderGroup.highestPriority,\n      isForced: orderGroup.forceBatch,\n      batchReason: orderGroup.forceBatch ? 'Force Batched' : 'Order Kept Together',\n      isFullOrder: true,\n      mixedTypes: orderGroup.productTypes.size > 1,\n      orderId: orderId\n    });\n  }\n  // Strategy 2: Split by facility if multiple facilities\n  else if (orderGroup.facilities.size > 1) {\n    // Group by facility\n    const facilityGroups = new Map();\n    \n    orderGroup.items.forEach(item => {\n      const facility = item['Print Facility'] || 'UNASSIGNED';\n      if (!facilityGroups.has(facility)) {\n        facilityGroups.set(facility, []);\n      }\n      facilityGroups.get(facility).push(item);\n    });\n    \n    // Create batch for each facility\n    for (const [facility, facilityItems] of facilityGroups) {\n      readyGroups.push({\n        key: `ORDER_${orderId}_${facility}`,\n        items: facilityItems,\n        productType: 'Mixed',\n        facility: facility,\n        priorityLevel: getPriorityLevel(orderGroup.highestPriority),\n        priorityScore: orderGroup.highestPriority,\n        isForced: orderGroup.forceBatch,\n        batchReason: 'Split by Facility',\n        isFullOrder: false,\n        partialOrder: true,\n        orderId: orderId\n      });\n    }\n  }\n  // Strategy 3: Large order - may need to split\n  else if (orderGroup.totalQuantity > ORDER_GROUPING.MAX_BATCH_SIZE && ORDER_GROUPING.SPLIT_LARGE_ORDERS) {\n    // Split large orders into chunks\n    const chunks = [];\n    let currentChunk = [];\n    let currentSize = 0;\n    \n    orderGroup.items.forEach(item => {\n      const itemQty = item.Quantity || 0;\n      if (currentSize + itemQty > ORDER_GROUPING.MAX_BATCH_SIZE && currentChunk.length > 0) {\n        chunks.push(currentChunk);\n        currentChunk = [];\n        currentSize = 0;\n      }\n      currentChunk.push(item);\n      currentSize += itemQty;\n    });\n    \n    if (currentChunk.length > 0) {\n      chunks.push(currentChunk);\n    }\n    \n    chunks.forEach((chunk, index) => {\n      readyGroups.push({\n        key: `ORDER_${orderId}_CHUNK_${index + 1}`,\n        items: chunk,\n        productType: 'Mixed',\n        facility: Array.from(orderGroup.facilities)[0],\n        priorityLevel: getPriorityLevel(orderGroup.highestPriority),\n        priorityScore: orderGroup.highestPriority,\n        isForced: orderGroup.forceBatch,\n        batchReason: `Large Order Chunk ${index + 1}/${chunks.length}`,\n        isFullOrder: false,\n        largeOrder: true,\n        orderId: orderId\n      });\n    });\n  }\n  // Strategy 4: Not enough items yet\n  else if (orderGroup.items.length < requiredCount && !orderGroup.forceBatch) {\n    pendingGroups.push({\n      key: `ORDER_${orderId}`,\n      orderGroup,\n      requiredCount,\n      needsMore: requiredCount - orderGroup.items.length\n    });\n  }\n}\n\nfunction getPriorityLevel(score) {\n  if (score >= 50000) return 'Force Batch';\n  if (score >= 10000) return 'Super Rush';\n  if (score >= 9000) return 'Overnight';\n  if (score >= 8000) return 'Jiffy Priority';\n  if (score >= 7000) return 'Rush 1-2 Days';\n  if (score >= 6000) return 'Express';\n  if (score >= 5000) return 'Priority';\n  if (score >= 4000) return 'High Priority';\n  return 'Normal';\n}\n\n// Log summary\nconsole.log(`Order-Centric Batching Summary:`);\nconsole.log(`- Total orders: ${orderGroups.size}`);\nconsole.log(`- Ready batches: ${readyGroups.length}`);\nconsole.log(`- Full orders kept together: ${readyGroups.filter(g => g.isFullOrder).length}`);\nconsole.log(`- Orders split by facility: ${readyGroups.filter(g => g.partialOrder).length}`);\nconsole.log(`- Large orders chunked: ${readyGroups.filter(g => g.largeOrder).length}`);\nconsole.log(`- Pending orders: ${pendingGroups.length}`);\n\n// Return ready groups or detailed status\nif (readyGroups.length > 0) {\n  return readyGroups.map(group => ({ json: group }));\n} else {\n  return [{\n    json: {\n      message: \"No groups ready for batching\",\n      totalItemsReceived: items.length,\n      totalItemsProcessed: readyItems.length,\n      ordersProcessed: orderGroups.size,\n      pendingOrders: pendingGroups.map(p => ({\n        orderId: p.key,\n        itemCount: p.orderGroup.items.length,\n        requiredCount: p.requiredCount,\n        needsMore: p.needsMore\n      }))\n    }\n  }];\n}"
+        },
+        "id": "0dac9af7-73e3-4376-9c7d-542547b0f802",
+        "name": "Group Ready Items",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -40,
+          1020
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "check-batches",
+                "leftValue": "={{ $json.message }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notExists",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "b51489e7-a392-4a51-a0e2-b9731582f33d",
+        "name": "Batches Ready?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -40,
+          1260
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Create Batch Records - Final Version\nconst items = $items(); // Ignore the syntax error - it works\nconst output = [];\n\nconst now = new Date();\nconst batchDate = now.toISOString().split('T')[0].replace(/-/g, '');\nconst batchHour = now.getHours().toString().padStart(2, '0');\nconst batchMin = now.getMinutes().toString().padStart(2, '0');\nconst batchTime = batchHour + batchMin;\n\n// Process each item\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  \n  // Skip existing batches that don't need update\n  if (data.updateType === 'existing' && !data.needsUpdate) {\n    continue;\n  }\n  \n  // Handle existing batch updates\n  if (data.updateType === 'existing') {\n    const updateRecord = {\n      id: data.id,\n      recordId: data.recordId,\n      'Queue Position': data.queuePosition,\n      updateType: 'existing'\n    };\n    \n    output.push({ json: updateRecord });\n    continue;\n  }\n  \n  // Create new batch records\n  const facility = data.facility || 'UNASSIGNED';\n  const queuePos = data.queuePosition || (i + 1);\n  \n  // Determine priority prefix\n  let priorityPrefix = 'STD';\n  if (data.priorityScore >= 8000) {\n    priorityPrefix = 'RUSH';\n  }\n  \n  // Determine product abbreviation\n  let productAbbrev = 'MIX';\n  if (data.productType) {\n    const pt = data.productType;\n    if (pt === 'UV' || pt === 'UV Stickers') {\n      productAbbrev = 'UV';\n    } else if (pt === 'UV Gang Sheet') {\n      productAbbrev = 'UV-GS';\n    } else if (pt === 'Sublimation') {\n      productAbbrev = 'SUB';\n    } else if (pt === 'DTF Gang Sheet') {\n      productAbbrev = 'DTF-GS';\n    } else if (pt === 'DTF' || pt === 'DTF Transfers') {\n      productAbbrev = 'DTF';\n    }\n  }\n  \n  // Build batch name\n  const seqNum = queuePos.toString().padStart(3, '0');\n  const batchName = facility + '-' + productAbbrev + '-' + priorityPrefix + '-' + \n                    batchDate + '-' + batchTime + '-' + seqNum;\n  \n  // Calculate totals\n  let totalQuantity = 0;\n  const orderItemIds = [];\n  const orderIdSet = {};\n  const orderIds = [];\n  \n  if (data.items && Array.isArray(data.items)) {\n    for (let j = 0; j < data.items.length; j++) {\n      const item = data.items[j];\n      \n      // Add quantity\n      totalQuantity += item.Quantity || 0;\n      \n      // Add item ID\n      if (item.id) {\n        orderItemIds.push(item.id);\n      }\n      \n      // Extract order ID\n      let orderId = null;\n      if (item['Order ID'] && Array.isArray(item['Order ID']) && item['Order ID'][0]) {\n        orderId = item['Order ID'][0];\n      } else if (item.orderData && item.orderData['Order ID']) {\n        orderId = item.orderData['Order ID'];\n      }\n      \n      if (orderId && !orderIdSet[orderId]) {\n        orderIdSet[orderId] = true;\n        orderIds.push(orderId);\n      }\n    }\n  }\n  \n  // Determine priority\n  let batchPriority = 'Normal';\n  if (data.priorityLevel) {\n    const pl = data.priorityLevel;\n    if (pl.indexOf('Force') !== -1 || \n        pl.indexOf('Super Rush') !== -1 || \n        pl.indexOf('Overnight') !== -1) {\n      batchPriority = 'Urgent';\n    } else if (pl.indexOf('Rush') !== -1 || \n               pl.indexOf('Express') !== -1) {\n      batchPriority = 'High';\n    }\n  }\n  \n  // Build notes\n  const noteLines = [];\n  noteLines.push('Priority Score: ' + (data.priorityScore || 0));\n  noteLines.push('Priority Level: ' + (data.priorityLevel || 'Standard'));\n  noteLines.push('Batch Reason: ' + (data.batchReason || 'Unknown'));\n  noteLines.push('Order Count: ' + orderIds.length);\n  noteLines.push('Order IDs: ' + orderIds.join(', '));\n  noteLines.push('Queue Position: ' + queuePos);\n  \n  const internalNotes = noteLines.join('\\n');\n  \n  const itemCount = data.items ? data.items.length : 0;\n  const stageHistory = now.toISOString() + ': Batch created with ' + \n                      itemCount + ' items from ' + orderIds.length + ' order(s)';\n  \n  // Create the batch record\n  const batchRecord = {\n    'Batch Name': batchName,\n    'Batch Status': 'Created',\n    'Priority': batchPriority,\n    'Print Type': data.productType || 'Mixed',\n    'Order Items': orderItemIds,\n    'Order IDs': orderIds,\n    'Created': now.toISOString(),\n    'Total Items': itemCount,\n    'Total Quantity': totalQuantity,\n    'Queue Position': queuePos,\n    'Internal Notes': internalNotes,\n    'Stage History': stageHistory,\n    'Mixed Product Types': data.productType === 'Mixed',\n    updateType: 'new'\n  };\n  \n  output.push({ json: batchRecord });\n}\n\n// Return results\nreturn output;"
+        },
+        "id": "05ad41f4-ccb5-44e1-9463-1cc9b2cdad95",
+        "name": "Create Batch Records",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          560,
+          1560
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "fieldsToMatchString": "[\"Batch Name\"]",
+          "joinMode": "keepEverything",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          -40,
+          1540
+        ],
+        "id": "d31b5da8-adb8-4d97-a872-838af58abfce",
+        "name": "Merge",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "38d73dbb-0753-458a-8b14-ff32331684f1",
+                "leftValue": "={{ $json[\"Batch Name\"] }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "string",
+                  "operation": "exists",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          120,
+          1580
+        ],
+        "id": "b5935d28-8afe-46f7-a7e6-2e9efcb92eb6",
+        "name": "Has Existing Batches"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Calculate Dynamic Queue Positions - Working Version\nconst items = $input.all();\nconst output = [];\n\n// Get config settings\nlet QUEUE_SETTINGS = {\n  AGE_BONUS_PER_HOUR: 10,\n  MAX_AGE_BONUS: 1000\n};\n\ntry {\n  const config = $('Batch Configuration').first().json;\n  if (config && config.QUEUE_SETTINGS) {\n    QUEUE_SETTINGS = config.QUEUE_SETTINGS;\n  }\n} catch (e) {\n  // Use defaults if config not available\n}\n\n// Separate batches by status\nconst inProgressBatches = [];\nconst queuedBatches = [];\n\n// Process each item\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  \n  if (!data) continue;\n  \n  // Determine if this is an existing batch or new batch group\n  const isExistingBatch = !!(data.createdTime && data['Batch Name']);\n  \n  // Create batch object\n  const batchObj = {\n    id: data.id,\n    key: data.key,\n    name: data['Batch Name'] || ('NEW-' + data.key),\n    status: data['Batch Status'] || 'New',\n    created: data.Created || data.created || new Date().toISOString(),\n    priority: data['Priority'] || 'Normal',\n    totalQuantity: data['Total Quantity'] || (data.items ? data.items.length : 0),\n    facility: data.facility,\n    productType: data.productType,\n    priorityLevel: data.priorityLevel,\n    priorityScore: data.priorityScore || 1000,\n    items: data.items || [],\n    isExistingBatch: isExistingBatch,\n    isNewBatch: !isExistingBatch,\n    originalData: data\n  };\n  \n  // Categorize by status\n  const status = batchObj.status;\n  \n  if (status === 'Printing' || status === 'In Progress') {\n    inProgressBatches.push(batchObj);\n  } else if (status !== 'Completed' && status !== 'Shipped') {\n    queuedBatches.push(batchObj);\n  }\n}\n\n// Calculate dynamic priority\nfunction calculateDynamicPriority(batch) {\n  let baseScore = batch.priorityScore;\n  \n  // For existing batches without priorityScore\n  if (!batch.priorityScore && batch.priority) {\n    if (batch.priority === 'Urgent') baseScore = 10000;\n    else if (batch.priority === 'High') baseScore = 5000;\n    else baseScore = 1000;\n  }\n  \n  // Calculate age bonus\n  const now = new Date();\n  const created = new Date(batch.created);\n  const ageInHours = (now - created) / (1000 * 60 * 60);\n  const ageBonus = Math.min(ageInHours * QUEUE_SETTINGS.AGE_BONUS_PER_HOUR, QUEUE_SETTINGS.MAX_AGE_BONUS);\n  \n  return baseScore + ageBonus;\n}\n\n// Add dynamic priority to queued batches\nfor (let i = 0; i < queuedBatches.length; i++) {\n  queuedBatches[i].dynamicPriority = calculateDynamicPriority(queuedBatches[i]);\n}\n\n// Sort by dynamic priority (highest first)\nqueuedBatches.sort(function(a, b) {\n  return b.dynamicPriority - a.dynamicPriority;\n});\n\n// Assign queue positions\nlet position = inProgressBatches.length + 1;\nfor (let i = 0; i < queuedBatches.length; i++) {\n  const batch = queuedBatches[i];\n  batch.queuePosition = position++;\n  batch.previousPosition = batch.originalData['Queue Position'] || null;\n}\n\n// Build output\nfor (let i = 0; i < queuedBatches.length; i++) {\n  const batch = queuedBatches[i];\n  let outputItem = {};\n  \n  if (batch.isExistingBatch) {\n    // For existing batches\n    outputItem = {\n      id: batch.id,\n      recordId: batch.id,\n      batchName: batch.name,\n      queuePosition: batch.queuePosition,\n      dynamicPriority: batch.dynamicPriority,\n      updateType: 'existing',\n      needsUpdate: batch.previousPosition !== batch.queuePosition\n    };\n  } else {\n    // For new batches - manually copy properties\n    outputItem = {\n      key: batch.originalData.key,\n      items: batch.originalData.items,\n      facility: batch.originalData.facility,\n      productType: batch.originalData.productType,\n      priorityLevel: batch.originalData.priorityLevel,\n      priorityScore: batch.originalData.priorityScore,\n      isForced: batch.originalData.isForced,\n      batchReason: batch.originalData.batchReason,\n      isFullOrder: batch.originalData.isFullOrder,\n      partialOrder: batch.originalData.partialOrder,\n      orderId: batch.originalData.orderId,\n      queuePosition: batch.queuePosition,\n      dynamicPriority: batch.dynamicPriority,\n      updateType: 'new',\n      batchName: batch.name\n    };\n  }\n  \n  output.push({\n    json: outputItem\n  });\n}\n\nreturn output;"
+        },
+        "id": "ca177d33-50ca-4fa2-9e91-9980f9f23db2",
+        "name": "Calculate Queue Positions (Complex)",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          340,
+          1440
+        ],
+        "alwaysOutputData": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Simple Queue Positions for NEW batches (no existing batches)\nconst items = $input.all();\nconst output = [];\n\n// Get config settings\nlet QUEUE_SETTINGS = {\n  AGE_BONUS_PER_HOUR: 10,\n  MAX_AGE_BONUS: 1000\n};\n\ntry {\n  const config = $('Batch Configuration').first().json;\n  if (config && config.QUEUE_SETTINGS) {\n    QUEUE_SETTINGS = config.QUEUE_SETTINGS;\n  }\n} catch (e) {\n  // Use defaults if config not available\n}\n\n// Filter to get only new batch groups\nconst newBatchGroups = [];\nfor (let i = 0; i < items.length; i++) {\n  const data = items[i].json;\n  \n  // New batch groups have 'key', 'items', 'facility' but no 'createdTime'\n  if (data && data.key && data.items && data.facility && !data.createdTime) {\n    newBatchGroups.push(data);\n  }\n}\n\n// If no new batch groups found, return empty array\nif (newBatchGroups.length === 0) {\n  return [];\n}\n\n// Calculate dynamic priority\nfunction calculateDynamicPriority(batch, baseScore) {\n  const now = new Date();\n  const created = new Date(batch.created || now);\n  const ageInHours = (now - created) / (1000 * 60 * 60);\n  const ageBonus = Math.min(ageInHours * QUEUE_SETTINGS.AGE_BONUS_PER_HOUR, QUEUE_SETTINGS.MAX_AGE_BONUS);\n  return baseScore + ageBonus;\n}\n\n// Process new batches with priority\nconst batchesWithPriority = [];\nfor (let i = 0; i < newBatchGroups.length; i++) {\n  const batch = newBatchGroups[i];\n  batchesWithPriority.push({\n    data: batch,\n    created: new Date(),\n    dynamicPriority: calculateDynamicPriority({ created: new Date() }, batch.priorityScore || 1000)\n  });\n}\n\n// Sort by dynamic priority (highest first)\nbatchesWithPriority.sort(function(a, b) {\n  return b.dynamicPriority - a.dynamicPriority;\n});\n\n// Build output with queue positions starting from 1\nlet position = 1;\nfor (let i = 0; i < batchesWithPriority.length; i++) {\n  const batch = batchesWithPriority[i];\n  \n  // Create output item with all original data plus queue info\n  const outputItem = {\n    key: batch.data.key,\n    items: batch.data.items,\n    facility: batch.data.facility,\n    productType: batch.data.productType,\n    priorityLevel: batch.data.priorityLevel,\n    priorityScore: batch.data.priorityScore,\n    isForced: batch.data.isForced,\n    batchReason: batch.data.batchReason,\n    isFullOrder: batch.data.isFullOrder,\n    partialOrder: batch.data.partialOrder,\n    orderId: batch.data.orderId,\n    queuePosition: position++,\n    dynamicPriority: batch.dynamicPriority,\n    created: batch.created.toISOString()\n  };\n  \n  output.push({\n    json: outputItem\n  });\n}\n\nreturn output;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          340,
+          1680
+        ],
+        "id": "a7e19f4e-336a-482f-97ba-08d0d8060e70",
+        "name": "Calculate Queue Positions (Simple)",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "update",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblIWVpsJiOF5VZQE",
+            "mode": "list",
+            "cachedResultName": "Batches",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblIWVpsJiOF5VZQE"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "Mixed Product Types": false,
+              "id": "={{ $json.id }}",
+              "Queue Position": "={{ $json[\"Queue Position\"] }}",
+              "Material Length": 0,
+              "Material Cost": 0,
+              "Dynamic Priority Score": 0
+            },
+            "matchingColumns": [
+              "id"
+            ],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Batch ID",
+                "displayName": "Batch ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Batch Name",
+                "displayName": "Batch Name",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Status",
+                "displayName": "Batch Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Created",
+                    "value": "Created"
+                  },
+                  {
+                    "name": "Printing",
+                    "value": "Printing"
+                  },
+                  {
+                    "name": "Complete",
+                    "value": "Complete"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Created",
+                "displayName": "Created",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Print Type",
+                "displayName": "Print Type",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "DTF",
+                    "value": "DTF"
+                  },
+                  {
+                    "name": "Sublimation",
+                    "value": "Sublimation"
+                  },
+                  {
+                    "name": "UV",
+                    "value": "UV"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Priority",
+                "displayName": "Priority",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Urgent",
+                    "value": "Urgent"
+                  },
+                  {
+                    "name": "High",
+                    "value": "High"
+                  },
+                  {
+                    "name": "Normal",
+                    "value": "Normal"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Linked Order Item",
+                "displayName": "Linked Order Item",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Linked Production",
+                "displayName": "Linked Production",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Print Started (from Production Records)",
+                "displayName": "Print Started (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Print Completed (from Production Records)",
+                "displayName": "Print Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "QC Completed (from Production Records)",
+                "displayName": "QC Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Cut Completed (from Production Records)",
+                "displayName": "Cut Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Ship Completed (from Production Records)",
+                "displayName": "Ship Completed (from Production Records)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Printer Used",
+                "displayName": "Printer Used",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Status Color",
+                "displayName": "Status Color",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Batch QR String",
+                "displayName": "Batch QR String",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Batch QR Code",
+                "displayName": "Batch QR Code",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Sheet PDF",
+                "displayName": "Batch Sheet PDF",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Material Length",
+                "displayName": "Material Length",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Material Cost",
+                "displayName": "Material Cost",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Completed",
+                "displayName": "Batch Completed",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "QC Status",
+                "displayName": "QC Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Pending",
+                    "value": "Pending"
+                  },
+                  {
+                    "name": "Passed",
+                    "value": "Passed"
+                  },
+                  {
+                    "name": "Failed",
+                    "value": "Failed"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Quality Notes",
+                "displayName": "Quality Notes",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Internal Notes",
+                "displayName": "Internal Notes",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Stage History",
+                "displayName": "Stage History",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Total Items",
+                "displayName": "Total Items",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Total Orders",
+                "displayName": "Total Orders",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Total Quantity",
+                "displayName": "Total Quantity",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Production Time",
+                "displayName": "Production Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Queue Position",
+                "displayName": "Queue Position",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Facility",
+                "displayName": "Facility",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Operator",
+                "displayName": "Operator",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Defect Count",
+                "displayName": "Defect Count",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Reprint Items",
+                "displayName": "Reprint Items",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Days Old",
+                "displayName": "Days Old",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Is Overdue",
+                "displayName": "Is Overdue",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Completion %",
+                "displayName": "Completion %",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Completed Items",
+                "displayName": "Completed Items",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Last Modified",
+                "displayName": "Last Modified",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Linked Order",
+                "displayName": "Linked Order",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Order ID",
+                "displayName": "Order ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Mixed Product Types",
+                "displayName": "Mixed Product Types",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Dynamic Priority Score",
+                "displayName": "Dynamic Priority Score",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Estimated Start Time",
+                "displayName": "Estimated Start Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Estimated Completion Time",
+                "displayName": "Estimated Completion Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Actual Start Time",
+                "displayName": "Actual Start Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Actual Completion Time",
+                "displayName": "Actual Completion Time",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Order IDs",
+                "displayName": "Order IDs",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Order Production Status",
+                "displayName": "Order Production Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Autonumber",
+                "displayName": "Autonumber",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Orders",
+                "displayName": "Orders",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2.1,
+        "position": [
+          940,
+          1440
+        ],
+        "id": "7b8bdb7b-c345-4ad5-a9a1-30ed22d14dd2",
+        "name": "Update Batch Queue Postions",
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Create Production Records for Batch Items - Updated with fixed Linked Order extraction\nconst batchesCreated = $('Create Batches in Airtable').all();\nconst updatedOrderItems = $('Update Order Items').all();\nconst productionRecords = [];\n\n// Create a map of item IDs to their full data for quick lookup\nconst itemDataMap = new Map();\nfor (const item of updatedOrderItems) {\n  if (item.json && item.json.id) {\n    // Store the complete record including fields\n    itemDataMap.set(item.json.id, item.json);\n  }\n}\n\n// Also get the original item data from previous nodes if available\nconst readyItems = $('Group Ready Items').all();\nconst originalItemMap = new Map();\nfor (const group of readyItems) {\n  if (group.json && group.json.items) {\n    for (const item of group.json.items) {\n      if (item.id) {\n        originalItemMap.set(item.id, item);\n      }\n    }\n  }\n}\n\n// Process each batch\nfor (const batch of batchesCreated) {\n  if (!batch.json || !batch.json.id) continue;\n  \n  const batchId = batch.json.id;\n  const batchName = batch.json.fields?.['Batch Name'] || '';\n  const linkedOrderItems = batch.json.fields?.['Linked Order Item'] || [];\n  const priority = batch.json.fields?.['Priority'] || 'Standard';\n  const facility = batch.json.fields?.['Facility'] || 'CHICO';\n  \n  // Create production record for each item in the batch\n  for (const itemId of linkedOrderItems) {\n    // Find the item data from our maps\n    const updatedItem = itemDataMap.get(itemId);\n    const originalItem = originalItemMap.get(itemId);\n    \n    // Combine data from both sources\n    const itemData = {\n      ...originalItem,\n      ...updatedItem\n    };\n    \n    if (!itemData || Object.keys(itemData).length === 0) {\n      console.log(`Warning: Could not find data for item ${itemId}`);\n      continue;\n    }\n    \n    // Extract Linked Order - it should already be an array in the data\n    let linkedOrder = [];\n    \n    // Try different possible locations for the Linked Order\n    if (itemData['Linked Order'] && Array.isArray(itemData['Linked Order'])) {\n      linkedOrder = itemData['Linked Order'];\n    } else if (originalItem && originalItem['Linked Order'] && Array.isArray(originalItem['Linked Order'])) {\n      linkedOrder = originalItem['Linked Order'];\n    } else if (itemData.fields && itemData.fields['Linked Order']) {\n      linkedOrder = itemData.fields['Linked Order'];\n    }\n    \n    // Get printer assignment\n    const printerUsed = itemData['Printer Assignment'] || \n                       originalItem?.['Printer Assignment'] || \n                       batch.json.fields?.['Printer Assignment'] || \n                       null;\n    \n    // Generate unique production ID\n    const prodId = 'P' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');\n    const qrString = `PROD:${prodId}|${printerUsed || 'UNASSIGNED'}|`;\n    \n    // Get item details\n    const productType = itemData['Product Type'] || originalItem?.['Product Type'] || '';\n    const title = itemData['Title'] || originalItem?.['Title'] || '';\n    const quantity = itemData['Quantity'] || originalItem?.['Quantity'] || 1;\n    \n    const productionRecord = {\n      fields: {\n        'Order Item': [itemId],\n        'Batch Name': batchName,\n        'Item Description': productType || title || `Item ${itemId}`,\n        'Quantity': quantity,\n        'Item QR String': qrString,\n        'Production Status': 'Pending',\n        'Stage Progress': 0,\n        'QC Status': null,\n        'Defect Found': false,\n        'Needs Reprint': false,\n        'Reprint Count': 0,\n        'Printer Used': printerUsed,\n        'Priority': priority,\n        'SLA Status': priority === 'Urgent' ? 'Rush' : 'Standard',\n        'Linked Batch': [batchId],\n        'Linked Order': linkedOrder,  // Pass the array directly\n        'Created': new Date().toISOString()\n      }\n    };\n    \n    productionRecords.push(productionRecord);\n    \n    // Log first record for debugging\n    if (productionRecords.length === 1) {\n      console.log('Sample production record:', JSON.stringify(productionRecord, null, 2));\n      console.log('Linked Order value:', linkedOrder);\n    }\n  }\n}\n\nconsole.log(`Created ${productionRecords.length} production records for ${batchesCreated.length} batches`);\nreturn productionRecords.map(record => ({ json: record }));"
+        },
+        "id": "8a3921aa-9b18-4366-908a-ecdaa22296d3",
+        "name": "Create Production Records v2",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1580,
+          1540
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "create",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list",
+            "cachedResultName": "Order Management"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblKmtH1t8EhgkBT9",
+            "mode": "list",
+            "cachedResultName": "Productions",
+            "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblKmtH1t8EhgkBT9"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "Defect Found": "={{ $json.fields[\"Defect Found\"] }}",
+              "Needs Reprint": "={{ $json.fields[\"Needs Reprint\"] }}",
+              "Order Item": "={{ $json.fields[\"Order Item\"] }}",
+              "Production Status": "={{ $json.fields[\"Production Status\"] }}",
+              "Reprint Count": "={{ $json.fields[\"Reprint Count\"] }}",
+              "Priority": "={{ $json.fields.Priority }}",
+              "SLA Status": "={{ $json.fields[\"SLA Status\"] }}",
+              "Linked Batch": "={{ $json.fields[\"Linked Batch\"] }}",
+              "Printer Used": "={{ $json.fields[\"Printer Used\"] }}",
+              "Linked Order": "={{ $json.fields[\"Linked Order\"] }}",
+              "Facility": "={{ $json.fields[\"Batch Name\"]?.includes(\"CHICO\") ? \"CHICO\" : ($json.fields[\"Batch Name\"]?.includes(\"OUTPOST\") ? \"OUTPOST\" : \"\") }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "Production ID",
+                "displayName": "Production ID",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Created",
+                "displayName": "Created",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Order Item",
+                "displayName": "Order Item",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Batch Name",
+                "displayName": "Batch Name",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Item Description",
+                "displayName": "Item Description",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Quantity",
+                "displayName": "Quantity",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": false
+              },
+              {
+                "id": "Production Status",
+                "displayName": "Production Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Pending",
+                    "value": "Pending"
+                  },
+                  {
+                    "name": "Printing",
+                    "value": "Printing"
+                  },
+                  {
+                    "name": "Completed",
+                    "value": "Completed"
+                  },
+                  {
+                    "name": "QC",
+                    "value": "QC"
+                  },
+                  {
+                    "name": "Failed",
+                    "value": "Failed"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Item QR String",
+                "displayName": "Item QR String",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Item QR Code",
+                "displayName": "Item QR Code",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Stage Progress",
+                "displayName": "Stage Progress",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Print Started",
+                "displayName": "Print Started",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Print Completed",
+                "displayName": "Print Completed",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "QC Completed",
+                "displayName": "QC Completed",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Cut Completed",
+                "displayName": "Cut Completed",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Ship Completed",
+                "displayName": "Ship Completed",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "QC Status",
+                "displayName": "QC Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Pending",
+                    "value": "Pending"
+                  },
+                  {
+                    "name": "Passed",
+                    "value": "Passed"
+                  },
+                  {
+                    "name": "Failed",
+                    "value": "Failed"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Defect Found",
+                "displayName": "Defect Found",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Defect Type",
+                "displayName": "Defect Type",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "options": [
+                  {
+                    "name": "Color",
+                    "value": "Color"
+                  },
+                  {
+                    "name": "Alignment",
+                    "value": "Alignment"
+                  },
+                  {
+                    "name": "Quality",
+                    "value": "Quality"
+                  },
+                  {
+                    "name": "Material",
+                    "value": "Material"
+                  },
+                  {
+                    "name": "Other",
+                    "value": "Other"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Issue Notes",
+                "displayName": "Issue Notes",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Issue Photos",
+                "displayName": "Issue Photos",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Needs Reprint",
+                "displayName": "Needs Reprint",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Reprint Count",
+                "displayName": "Reprint Count",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Printer Used",
+                "displayName": "Printer Used",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "D2",
+                    "value": "D2"
+                  },
+                  {
+                    "name": "U2",
+                    "value": "U2"
+                  },
+                  {
+                    "name": "S2",
+                    "value": "S2"
+                  },
+                  {
+                    "name": "D6",
+                    "value": "D6"
+                  },
+                  {
+                    "name": "C2",
+                    "value": "C2"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Facility",
+                "displayName": "Facility",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "OUTPOST",
+                    "value": "OUTPOST"
+                  },
+                  {
+                    "name": "CHICO",
+                    "value": "CHICO"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Total Time (Hours)",
+                "displayName": "Total Time (Hours)",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Is Overdue",
+                "displayName": "Is Overdue",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "SLA Status",
+                "displayName": "SLA Status",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Standard",
+                    "value": "Standard"
+                  },
+                  {
+                    "name": "Rush",
+                    "value": "Rush"
+                  },
+                  {
+                    "name": "Super Rush",
+                    "value": "Super Rush"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Priority",
+                "displayName": "Priority",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "options",
+                "options": [
+                  {
+                    "name": "Urgent",
+                    "value": "Urgent"
+                  },
+                  {
+                    "name": "High",
+                    "value": "High"
+                  },
+                  {
+                    "name": "Normal",
+                    "value": "Normal"
+                  }
+                ],
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Hold Reason",
+                "displayName": "Hold Reason",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Scan History",
+                "displayName": "Scan History",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Last Modified",
+                "displayName": "Last Modified",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              },
+              {
+                "id": "Linked Batch",
+                "displayName": "Linked Batch",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Linked Order",
+                "displayName": "Linked Order",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "array",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Estimated Completion",
+                "displayName": "Estimated Completion",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "dateTime",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Autonumber",
+                "displayName": "Autonumber",
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true,
+                "display": true,
+                "type": "string",
+                "readOnly": true,
+                "removed": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "aade7a50-e4bc-490f-b2dd-e7e498e02332",
+        "name": "Insert Production Records v2",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          1780,
+          1540
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "8a3a2a31-b90c-4bb7-991d-91cf910ad072",
+                "leftValue": "={{ $json.updateType }}",
+                "rightValue": "existing",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals",
+                  "name": "filter.operator.equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          720,
+          1560
+        ],
+        "id": "268192a3-9fa2-4c56-909b-d3709033aec3",
+        "name": "Check Update Type",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        },
+        "id": "536a34dd-8c85-4157-a775-e7b6411fe399",
+        "name": "Order Status Sync",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1,
+        "position": [
+          -100,
+          2340
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Sync Order Production Status with Production Records\n// This aggregates production progress by order\n\n// Get all production records from last 7 days\nconst filterFormula = `AND(\n  {Created} > DATEADD(TODAY(), -7, 'days'),\n  OR(\n    {Production Status} = 'In Progress',\n    {Production Status} = 'Quality Check',\n    {Production Status} = 'Pending'\n  )\n)`;\n\nreturn [{\n  json: {\n    filterFormula,\n    syncType: 'scheduled',\n    timestamp: new Date().toISOString()\n  }\n}];"
+        },
+        "id": "6b27806f-bb95-48f0-b5d0-7df2b851aea2",
+        "name": "Prepare Status Sync",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          100,
+          2340
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "search",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblXXXXXXXXXXXX",
+            "mode": "list",
+            "cachedResultName": "Production"
+          },
+          "filterByFormula": "={{ $json.filterFormula }}",
+          "options": {
+            "fields": [
+              "Production ID",
+              "Order Item",
+              "Linked Order",
+              "Stage Progress",
+              "Production Status",
+              "Priority",
+              "Is Overdue",
+              "Estimated Completion"
+            ]
+          }
+        },
+        "id": "46710170-3ee0-43d3-b1ed-7cdf550e221e",
+        "name": "Get Production for Sync",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          300,
+          2340
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Aggregate Production by Order and Update Order Production Status\nconst productionRecords = $('Get Production for Sync').all();\nconst orderAggregates = new Map();\n\n// Group by order\nfor (const record of productionRecords) {\n  const orderId = record.json.fields?.['Linked Order']?.[0];\n  if (!orderId) continue;\n  \n  if (!orderAggregates.has(orderId)) {\n    orderAggregates.set(orderId, {\n      orderId,\n      totalItems: 0,\n      itemsCompleted: 0,\n      itemsInProgress: 0,\n      itemsQueued: 0,\n      totalProgress: 0,\n      hasOverdue: false,\n      highestPriority: 'Standard'\n    });\n  }\n  \n  const agg = orderAggregates.get(orderId);\n  const status = record.json.fields?.['Production Status'];\n  const progress = record.json.fields?.['Stage Progress'] || 0;\n  const priority = record.json.fields?.['Priority'];\n  const isOverdue = record.json.fields?.['Is Overdue'];\n  \n  agg.totalItems++;\n  agg.totalProgress += progress;\n  \n  // Count by status\n  if (status === 'Completed') {\n    agg.itemsCompleted++;\n  } else if (status === 'In Progress' || status === 'Quality Check') {\n    agg.itemsInProgress++;\n  } else if (status === 'Pending') {\n    agg.itemsQueued++;\n  }\n  \n  // Track overdue\n  if (isOverdue) agg.hasOverdue = true;\n  \n  // Track highest priority\n  if (priority === 'Urgent' || agg.highestPriority !== 'Urgent') {\n    if (priority === 'Urgent' || (priority === 'High' && agg.highestPriority === 'Standard')) {\n      agg.highestPriority = priority;\n    }\n  }\n}\n\n// Convert to Order Production Status updates\nconst updates = [];\nfor (const [orderId, data] of orderAggregates) {\n  const completionPercent = Math.round((data.totalProgress / data.totalItems) / 100 * 100);\n  \n  let status = 'Queued';\n  if (data.itemsCompleted === data.totalItems) {\n    status = 'Completed';\n  } else if (data.itemsInProgress > 0) {\n    status = 'In Production';\n  }\n  \n  updates.push({\n    orderId,\n    fields: {\n      'Total Items': data.totalItems,\n      'Items Queued': data.itemsQueued,\n      'Items In Production': data.itemsInProgress,\n      'Items Completed': data.itemsCompleted,\n      'Completion %': completionPercent,\n      'Status': status,\n      'Behind Schedule': data.hasOverdue,\n      'Last Updated': new Date().toISOString()\n    }\n  });\n}\n\nreturn updates.map(update => ({ json: update }));"
+        },
+        "id": "6f22291e-7f35-4b3e-b606-bae5bc7ed9d7",
+        "name": "Aggregate Order Status",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          500,
+          2340
+        ]
+      },
+      {
+        "parameters": {
+          "authentication": "airtableOAuth2Api",
+          "operation": "upsert",
+          "base": {
+            "__rl": true,
+            "value": "appZdp18sltDYOs4s",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "tblvBUk4CuCgImoWc",
+            "mode": "list",
+            "cachedResultName": "Order Production Status"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "Order ID": "={{ [$json.orderId] }}",
+              "Total Items": "={{ $json.fields['Total Items'] }}",
+              "Items Queued": "={{ $json.fields['Items Queued'] }}",
+              "Items In Production": "={{ $json.fields['Items In Production'] }}",
+              "Items Completed": "={{ $json.fields['Items Completed'] }}",
+              "Completion %": "={{ $json.fields['Completion %'] }}",
+              "Status": "={{ $json.fields['Status'] }}",
+              "Behind Schedule": "={{ $json.fields['Behind Schedule'] }}",
+              "Last Updated": "={{ $json.fields['Last Updated'] }}"
+            },
+            "matchingColumns": [
+              "Order ID"
+            ]
+          },
+          "options": {}
+        },
+        "id": "c293bab9-1df6-4915-b42f-a75cfa64b07d",
+        "name": "Update Order Production Status v2",
+        "type": "n8n-nodes-base.airtable",
+        "typeVersion": 2,
+        "position": [
+          700,
+          2340
+        ],
+        "credentials": {
+          "airtableOAuth2Api": {
+            "id": "cmcs8k4CVCEgOjLJ",
+            "name": "aaron@threadtank.com Personal Access Token"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "content": "## 🏭 FACILITY ASSIGNMENT RULES\n\n**Product → Facility Mapping:**\n- **DTF** → OUTPOST\n- **DTF Gang Sheet** → CHICO\n- **UV DTF** → CHICO\n- **UV Gang Sheet** → CHICO\n- **Sublimation** → CHICO\n- **Heat Press** → Manual Assignment\n- **Embroidery** → Manual Assignment\n\n**Priority Scoring:**\n- Super Rush: 100\n- Rush: 50\n- Normal: 10\n- Add 5 for pre-cut orders",
+          "height": 1180,
+          "width": 1710,
+          "color": 3
+        },
+        "id": "3efa8c8f-9c52-48f9-922c-6acf779be803",
+        "name": "🏭 Facility Assignment",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -1860,
+          780
+        ]
+      }
+    ],
+    "connections": {
+      "Schedule Trigger - 15min": {
+        "main": [
+          [
+            {
+              "node": "Batch Configuration",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Order Status": {
+        "main": [
+          [
+            {
+              "node": "Upsert Order Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert Order Status": {
+        "main": [
+          [
+            {
+              "node": "Check Behind Schedule",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Existing Batches": {
+        "main": [
+          [
+            {
+              "node": "Recalculate All Queues",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Recalculate All Queues": {
+        "main": [
+          [
+            {
+              "node": "Update Queue Positions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Batches in Airtable": {
+        "main": [
+          [
+            {
+              "node": "Prepare Item Updates",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Slack - Batches Created",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Item Updates": {
+        "main": [
+          [
+            {
+              "node": "Update Order Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Order Items": {
+        "main": [
+          [
+            {
+              "node": "Create Production Records v2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Behind Schedule": {
+        "main": [
+          [
+            {
+              "node": "Has Behind Schedule?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Behind Schedule?": {
+        "main": [
+          [
+            {
+              "node": "Slack - Behind Schedule Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Items Found?": {
+        "main": [
+          [
+            {
+              "node": "Get Order Details",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Batch Configuration": {
+        "main": [
+          [
+            {
+              "node": "Search Ready Items",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get Existing Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Search Ready Items": {
+        "main": [
+          [
+            {
+              "node": "Items Found?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Order Details": {
+        "main": [
+          [
+            {
+              "node": "Fetch Orders",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Orders": {
+        "main": [
+          [
+            {
+              "node": "Auto-Assign Facilities",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Auto-Assign Facilities": {
+        "main": [
+          [
+            {
+              "node": "Need Manual Assignment?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Need Manual Assignment?": {
+        "main": [
+          [
+            {
+              "node": "Slack Alert - Manual Assignment",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Group Ready Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Group Ready Items": {
+        "main": [
+          [
+            {
+              "node": "Batches Ready?",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Update Order Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Batches Ready?": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Create Batch Records": {
+        "main": [
+          [
+            {
+              "node": "Check Update Type",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Has Existing Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Existing Batches": {
+        "main": [
+          [
+            {
+              "node": "Calculate Queue Positions (Complex)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Calculate Queue Positions (Simple)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Calculate Queue Positions (Complex)": {
+        "main": [
+          [
+            {
+              "node": "Create Batch Records",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Calculate Queue Positions (Simple)": {
+        "main": [
+          [
+            {
+              "node": "Create Batch Records",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Production Records v2": {
+        "main": [
+          [
+            {
+              "node": "Insert Production Records v2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Update Type": {
+        "main": [
+          [
+            {
+              "node": "Update Batch Queue Postions",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Create Batches in Airtable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Order Status Sync": {
+        "main": [
+          [
+            {
+              "node": "Prepare Status Sync",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Status Sync": {
+        "main": [
+          [
+            {
+              "node": "Get Production for Sync",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Production for Sync": {
+        "main": [
+          [
+            {
+              "node": "Aggregate Order Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aggregate Order Status": {
+        "main": [
+          [
+            {
+              "node": "Update Order Production Status v2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {},
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+    }
+  }

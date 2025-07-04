@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Scanner - Production Apps</title>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../config.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        .scanner-specific {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        #reader {
+            width: 100%;
+            margin: 20px 0;
+        }
+        
+        .stage-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .manual-input {
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--light-color);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+        }
+        
+        #scan-result {
+            display: none;
+        }
+        
+        .stage-buttons {
+            display: none;
+        }
+        
+        .btn-scan {
+            min-width: 140px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-brand">Production Apps</a>
+            <div class="nav-links">
+                <a href="../index.html" class="nav-link">Dashboard</a>
+                <a href="index.html" class="nav-link active">Scanner</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="app-container scanner-specific">
+            <h1>Production Stage Scanner</h1>
+            
+            <div class="info-box">
+                <div class="info-box-header">
+                    <div class="info-box-title">Facility: <span id="operator-name">Not Set</span></div>
+                    <button class="btn btn-small btn-secondary" onclick="changeFacility()">Change</button>
+                </div>
+            </div>
+            
+            <div class="info-box" id="printer-info" style="display: none;">
+                <div class="info-box-header">
+                    <div class="info-box-title">Printer: <span id="printer-name">Not Set</span></div>
+                    <button class="btn btn-small btn-secondary" onclick="changePrinter()">Change</button>
+                </div>
+            </div>
+            
+            <div id="reader"></div>
+            
+            <div id="scan-result" class="info-box">
+                <div class="info-box-title">Scanned: <span id="scanned-code"></span></div>
+            </div>
+            
+            <div class="stage-buttons">
+                <button class="btn btn-success btn-scan" onclick="updateStage('print', 'start')">Start Print</button>
+                <button class="btn btn-primary btn-scan" onclick="updateStage('print', 'complete')">Complete Print</button>
+                <button class="btn btn-primary btn-scan" onclick="updateStage('qc', 'complete')">Pass QC</button>
+                <button class="btn btn-primary btn-scan" onclick="updateStage('cut', 'complete')">Complete Cut</button>
+                <button class="btn btn-primary btn-scan" onclick="updateStage('ship', 'complete')">Ship Complete</button>
+                <button class="btn btn-danger btn-scan" onclick="reportIssue()">Report Issue</button>
+            </div>
+            
+            <div id="status-message" class="status"></div>
+            
+            <div class="manual-input">
+                <h3>Manual Entry</h3>
+                <div class="form-group">
+                    <label class="form-label" for="manual-code">Production ID (e.g., P093)</label>
+                    <input type="text" id="manual-code" class="form-input" placeholder="Enter Production ID">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="manualEntry()">Submit Manual Entry</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use shared configuration
+        const WEBHOOK_URL = CONFIG_UTILS.getWebhookUrl('SCAN');
+        const BATCH_VALIDATION_URL = CONFIG_UTILS.getWebhookUrl('VALIDATE');
+        
+        let currentProductionId = null;
+        let html5QrCode = null;
+        let currentPrinter = null;
+        
+        // Initialize facility
+        let facilityName = localStorage.getItem('facilityName') || '';
+        if (!facilityName) {
+            changeFacility();
+        } else {
+            document.getElementById('operator-name').textContent = facilityName;
+        }
+        
+        // Initialize printer
+        currentPrinter = localStorage.getItem('currentPrinter') || '';
+        
+        // Initialize scanner
+        function initScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 } 
+            };
+            
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanError
+            ).catch(err => {
+                console.error("Unable to start scanner", err);
+                showStatus("Camera not available. Use manual entry.", "error");
+            });
+        }
+        
+        function onScanSuccess(decodedText, decodedResult) {
+            // Stop scanning temporarily
+            html5QrCode.stop();
+            
+            // Extract production ID from QR code
+            currentProductionId = decodedText;
+            
+            // Show result
+            document.getElementById('scanned-code').textContent = decodedText;
+            document.getElementById('scan-result').style.display = 'block';
+            document.querySelector('.stage-buttons').style.display = 'grid';
+            
+            showStatus(`Scanned: ${decodedText}`, "success");
+            
+            // Vibrate if available
+            if (navigator.vibrate) navigator.vibrate(200);
+        }
+        
+        function onScanError(errorMessage) {
+            // Ignore - this fires continuously when no QR code is visible
+        }
+        
+        function updateStage(stage, action) {
+            if (!currentProductionId) {
+                showStatus("No item scanned", "error");
+                return;
+            }
+            
+            // Check if printer selection is needed
+            if (stage === 'print' && action === 'start' && !currentPrinter) {
+                showStatus("Please select a printer first", "error");
+                changePrinter();
+                return;
+            }
+            
+            const data = {
+                qrCode: currentProductionId,
+                stage: stage,
+                action: action,
+                facility: facilityName,
+                printer: currentPrinter,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Send to webhook
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                showStatus(`${stage} ${action} recorded successfully!`, "success");
+                resetScanner();
+            })
+            .catch(error => {
+                showStatus(`Error: ${error.message}`, "error");
+            });
+        }
+        
+        function reportIssue() {
+            const issue = prompt("Describe the issue:");
+            if (issue) {
+                updateStage('qc', 'failed');
+                // Could send additional issue details
+            }
+        }
+        
+        async function manualEntry() {
+            const code = document.getElementById('manual-code').value;
+            if (!code) return;
+            
+            // Show loading
+            showStatus("Validating batch assignment...", "info");
+            
+            try {
+                // Validate batch is assigned to this facility
+                const response = await fetch(BATCH_VALIDATION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        productionId: code.toUpperCase(),
+                        facility: facilityName
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.valid) {
+                    currentProductionId = code.toUpperCase();
+                    document.getElementById('scanned-code').textContent = currentProductionId;
+                    document.getElementById('scan-result').style.display = 'block';
+                    document.querySelector('.stage-buttons').style.display = 'grid';
+                    document.getElementById('manual-code').value = '';
+                    showStatus(`Manual entry: ${currentProductionId}`, "success");
+                } else {
+                    showStatus(`Error: ${result.message || 'This item is not assigned to ' + facilityName}`, "error");
+                }
+            } catch (error) {
+                showStatus(`Error validating: ${error.message}`, "error");
+            }
+        }
+        
+        function resetScanner() {
+            setTimeout(() => {
+                currentProductionId = null;
+                document.getElementById('scan-result').style.display = 'none';
+                document.querySelector('.stage-buttons').style.display = 'none';
+                initScanner();
+            }, 2000);
+        }
+        
+        function changeFacility() {
+            const facilities = CONFIG.FACILITIES;
+            
+            const selection = prompt(`Enter facility name (${facilities.join(' or ')}):`, facilityName);
+            if (selection && CONFIG_UTILS.validateFacility(selection)) {
+                facilityName = selection.toUpperCase();
+                localStorage.setItem('facilityName', facilityName);
+                document.getElementById('operator-name').textContent = facilityName;
+                showStatus(`Facility set to: ${facilityName}`, "success");
+                
+                // Show printer selection for print stations
+                document.getElementById('printer-info').style.display = 'block';
+                if (currentPrinter) {
+                    document.getElementById('printer-name').textContent = currentPrinter;
+                }
+            } else if (selection) {
+                showStatus(`Invalid facility name. Please enter ${facilities.join(' or ')}`, "error");
+                changeFacility();
+            }
+        }
+        
+        function changePrinter() {
+            const facilityPrinters = CONFIG_UTILS.getFacilityPrinters(facilityName);
+            
+            if (facilityPrinters.length === 0) {
+                showStatus("No printers configured for this facility", "error");
+                return;
+            }
+            
+            const printerList = facilityPrinters.join(', ');
+            const selection = prompt(`Select printer (${printerList}):`, currentPrinter);
+            
+            if (selection && CONFIG_UTILS.validatePrinter(facilityName, selection)) {
+                currentPrinter = selection;
+                localStorage.setItem('currentPrinter', selection);
+                document.getElementById('printer-name').textContent = selection;
+                showStatus(`Printer set to: ${selection}`, "success");
+            } else if (selection) {
+                showStatus("Invalid printer selection", "error");
+                changePrinter();
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status status-${type} show`;
+            statusDiv.textContent = message;
+            
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Start scanner on load
+        window.onload = initScanner;
+    </script>
+</body>
+</html> 

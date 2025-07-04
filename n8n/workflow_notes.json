@@ -1,0 +1,160 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🎯 WORKFLOW OVERVIEW\n\n**Purpose:** Automated order ingestion from multiple sources with intelligent production batching\n\n**Key Components:**\n- Multi-source order ingestion (Shopify, Gmail/Jiffy, JotForm)\n- Automatic facility assignment based on product type\n- Smart batching with priority scoring\n- Production record creation\n- QC and file validation\n\n**Flow:** Orders → Validation → Facility Assignment → Batching → Production",
+        "height": 250,
+        "width": 400
+      },
+      "id": "sticky-overview",
+      "name": "📋 Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1600, 100]
+    },
+    {
+      "parameters": {
+        "content": "## 📥 ORDER SOURCES\n\n**1. Shopify Orders**\n- API: `/admin/api/2023-10/orders.json`\n- Fetches last 2 days\n- Converts to TS-TSS#### format\n- Detects rush/precut tags\n\n**2. Gmail/Jiffy Orders**\n- B2B Dropship orders\n- Order ID: JIFFY-{timestamp}\n- Includes shipping labels\n- Tracks gang sheets & cutlines\n\n**3. JotForm Submissions**\n- Custom order forms\n- Direct customer input\n- Parsed from form answers",
+        "height": 280,
+        "width": 350
+      },
+      "id": "sticky-sources",
+      "name": "📨 Order Sources",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1200, 100]
+    },
+    {
+      "parameters": {
+        "content": "## 🏭 FACILITY ASSIGNMENT RULES\n\n**Product → Facility Mapping:**\n- **DTF** → OUTPOST\n- **DTF Gang Sheet** → CHICO\n- **UV DTF** → CHICO\n- **UV Gang Sheet** → CHICO\n- **Sublimation** → CHICO\n- **Heat Press** → Manual Assignment\n- **Embroidery** → Manual Assignment\n\n**Priority Scoring:**\n- Super Rush: 100\n- Rush: 50\n- Normal: 10\n- Add 5 for pre-cut orders",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-facility",
+      "name": "🏭 Facility Assignment",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-800, 100]
+    },
+    {
+      "parameters": {
+        "content": "## 📦 BATCHING CONFIGURATION\n\n**Batch Thresholds:**\n- **CHICO:** 5 items minimum\n- **OUTPOST:** 10 items minimum\n\n**Batch Naming:**\n`{Facility}-B{Date}-{Type}-{Priority}`\n\nExample: `CHICO-B20250703-DTF-HIGH`\n\n**Force Batch Triggers:**\n- Priority score ≥ 50 (Rush)\n- Manual flag set\n- Same-day multiple orders\n\n**Max Items:** 100 per batch",
+        "height": 300,
+        "width": 350
+      },
+      "id": "sticky-batching",
+      "name": "📦 Batching Logic",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-400, 100]
+    },
+    {
+      "parameters": {
+        "content": "## 🔄 PRODUCTION RECORDS\n\n**Created for each item with:**\n- Production ID (auto-generated)\n- Batch assignment\n- Facility location\n- Priority level\n- QR code for tracking\n\n**Status Progression:**\n1. New → In Production\n2. Print Started (0%)\n3. Print Completed (25%)\n4. QC Completed (50%)\n5. Cut Completed (75%)\n6. Ship Completed (100%)",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-production",
+      "name": "🔄 Production Records",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 100]
+    },
+    {
+      "parameters": {
+        "content": "## 🎨 FILE PROCESSING\n\n**File Validation Checks:**\n- Valid URL format\n- Accessibility test\n- File type verification\n- Color mode detection (RGB/CMYK)\n\n**Cutline Handling:**\n- Matches cutline references\n- Links to Google Drive\n- Attaches to order items\n\n**Gang Sheet Detection:**\n- Identifies gang sheet products\n- Extracts gang sheet URLs\n- Creates special batches",
+        "height": 300,
+        "width": 350
+      },
+      "id": "sticky-files",
+      "name": "🎨 File Processing",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [400, 100]
+    },
+    {
+      "parameters": {
+        "content": "## ⚠️ ERROR HANDLING\n\n**Common Issues:**\n- Missing shipping address\n- No valid items found\n- File access errors\n- Invalid product types\n\n**Slack Alerts Sent For:**\n- Manual facility assignment needed\n- File validation failures\n- QC issues detected\n- Missing critical data\n\n**Fallback Behavior:**\n- Continues processing valid items\n- Logs errors to Airtable\n- Notifies team via Slack",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-errors",
+      "name": "⚠️ Error Handling",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [800, 100]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 AIRTABLE TABLES\n\n**Orders Table:**\n- Master order records\n- Status tracking\n- Customer links\n\n**Order Items Table:**\n- Individual line items\n- File attachments\n- Production status\n\n**Batches Table:**\n- Batch groupings\n- Priority levels\n- Item counts\n\n**Production Table:**\n- Production tracking\n- Stage timestamps\n- QC results",
+        "height": 320,
+        "width": 300
+      },
+      "id": "sticky-airtable",
+      "name": "📊 Airtable Structure",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1600, 450]
+    },
+    {
+      "parameters": {
+        "content": "## 🚀 RUSH ORDER HANDLING\n\n**Detection Methods:**\n- Tags: 'rush', '24 hour', 'super rush'\n- Production Option field\n- Priority score calculation\n\n**Rush Levels:**\n1. **Super Rush (24hr)** - Score: 100\n2. **Rush (1-2 days)** - Score: 50\n3. **Standard (2-3 days)** - Score: 10\n\n**Auto Actions:**\n- Force immediate batching\n- Priority facility assignment\n- Slack notifications\n- Special batch naming",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-rush",
+      "name": "🚀 Rush Order Logic",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1200, 450]
+    },
+    {
+      "parameters": {
+        "content": "## 🔍 QC & VALIDATION\n\n**Order Validation:**\n- Customer email required\n- Shipping address complete\n- Valid product types\n- Payment status check\n\n**File QC Process:**\n- Image analysis API\n- DPI verification (300+)\n- Color mode check\n- Print-ready validation\n\n**Failed QC Actions:**\n- Update item status\n- Send Slack alert\n- Flag for manual review\n- Block production start",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-qc",
+      "name": "🔍 QC & Validation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-800, 450]
+    },
+    {
+      "parameters": {
+        "content": "## 🔗 KEY NODE CONNECTIONS\n\n**Main Flow:**\n1. Triggers → Source Detection\n2. Parse Orders → Validate\n3. Store Records → Get IDs\n4. Add Items → Auto-Assign\n5. Group Items → Check Batches\n6. Create Batches → Production\n7. Update Status → Complete\n\n**Parallel Processes:**\n- File validation branch\n- Manual assignment alerts\n- Error handling paths",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-flow",
+      "name": "🔗 Workflow Flow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-400, 450]
+    },
+    {
+      "parameters": {
+        "content": "## 💡 OPTIMIZATION TIPS\n\n**Performance:**\n- Batch Airtable operations\n- Use formula filters efficiently\n- Limit record fetches\n- Process items in parallel\n\n**Reliability:**\n- Add error boundaries\n- Use continueOnFail\n- Log all critical steps\n- Test edge cases\n\n**Monitoring:**\n- Track processing times\n- Monitor batch sizes\n- Alert on failures\n- Daily summary reports",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-tips",
+      "name": "💡 Optimization Tips",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 450]
+    },
+    {
+      "parameters": {
+        "content": "## 📝 IMPORTANT NOTES\n\n**Order ID Formats:**\n- Shopify: `TS-TSS####`\n- Jiffy: `JIFFY-{timestamp}`\n- JotForm: `JOTFORM-{id}`\n\n**Critical Fields:**\n- Order Status (workflow stage)\n- Production Status (item level)\n- Batch Assignment\n- Facility Location\n- Priority Level\n\n**Scheduling:**\n- Main workflow: Every 30 min\n- Batch processor: Every 15 min\n- File validator: On demand",
+        "height": 320,
+        "width": 350
+      },
+      "id": "sticky-notes",
+      "name": "📝 Important Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [400, 450]
+    }
+  ]
+}

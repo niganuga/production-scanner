@@ -1,0 +1,1851 @@
+
+{
+  "base": "Order Management",
+  "tables": [
+    {
+      "name": "Orders",
+      "fields": [
+        {
+          "name": "Order ID",
+          "type": "singleLineText",
+          "id": "fldTME0FcZ4CyiHsC"
+        },
+        {
+          "name": "Submission ID",
+          "type": "singleLineText",
+          "id": "fldA4i2NMWnlHKZsI"
+        },
+        {
+          "name": "Source",
+          "type": "singleSelect",
+          "id": "fldeq3IDoUTk9F3P5"
+        },
+        {
+          "name": "Customer Profile",
+          "type": "multipleRecordLinks",
+          "id": "fldfe8OWEHHi6G3Si"
+        },
+        {
+          "name": "Order Date",
+          "type": "dateTime",
+          "id": "fldYmMxwEu24in1TH"
+        },
+        {
+          "name": "Payment Status",
+          "type": "singleSelect",
+          "id": "fldnZkpPNBy7qb8ei"
+        },
+        {
+          "name": "Order Status",
+          "type": "singleSelect",
+          "id": "fldmLoBsY4X2hEb66"
+        },
+        {
+          "name": "Shipping Option",
+          "type": "singleSelect",
+          "id": "fldmykY02tVZvf88W"
+        },
+        {
+          "name": "Rush Service",
+          "type": "checkbox",
+          "id": "fld59EuovUqLcec2W"
+        },
+        {
+          "name": "Pre-cut?",
+          "type": "checkbox",
+          "id": "fldZTnXbSxBGL1tiv"
+        },
+        {
+          "name": "Subtotal",
+          "type": "currency",
+          "id": "fldZVqq4XrxPHtK3L"
+        },
+        {
+          "name": "Shipping $",
+          "type": "currency",
+          "id": "fldFLjmxayiyNLhDG"
+        },
+        {
+          "name": "Tax $",
+          "type": "currency",
+          "id": "fldB1AodSwwgUu3UZ"
+        },
+        {
+          "name": "Total $",
+          "type": "currency",
+          "id": "fldcizcT5dQkLyFXX"
+        },
+        {
+          "name": "Item Count",
+          "type": "number",
+          "id": "fldun7rUpotgwHx6T"
+        },
+        {
+          "name": "Needs File?",
+          "type": "checkbox",
+          "id": "fldIxYUDahXzyjmxM"
+        },
+        {
+          "name": "Meta (JSON)",
+          "type": "multilineText",
+          "id": "fldJSwoVgxluZbgj0"
+        },
+        {
+          "name": "Linked Order Items",
+          "type": "multipleRecordLinks",
+          "id": "fld7vXk3ago74UKnP"
+        },
+        {
+          "name": "Order Summary",
+          "type": "multilineText",
+          "id": "fldKduLTSogImpH5F"
+        },
+        {
+          "name": "Email",
+          "type": "email",
+          "id": "fldYE1NlSOdSzMgYg"
+        },
+        {
+          "name": "Phone",
+          "type": "phoneNumber",
+          "id": "fldQyrymTjcMM8IE3"
+        },
+        {
+          "name": "Shopify Order Number",
+          "type": "number",
+          "id": "fldZoIkhuxShbIgXq"
+        },
+        {
+          "name": "Jiffy PO Number",
+          "type": "number",
+          "id": "fldtb1FYrLOd7Usol"
+        },
+        {
+          "name": "Customer Name",
+          "type": "singleLineText",
+          "id": "fldds4hjsk072I2Ki"
+        },
+        {
+          "name": "Customer Company",
+          "type": "singleLineText",
+          "id": "fldNZocIFXMYorJoo"
+        },
+        {
+          "name": "Shipping Address",
+          "type": "multilineText",
+          "id": "fldiXy9x8GB7RN2hK"
+        },
+        {
+          "name": "Billing Address",
+          "type": "multilineText",
+          "id": "fldViWWcykC4u6Jjg"
+        },
+        {
+          "name": "Shipping Country",
+          "type": "singleLineText",
+          "id": "fld5Zf6E5EV9m9wCm"
+        },
+        {
+          "name": "Shipping State",
+          "type": "singleLineText",
+          "id": "fldfrGPpm6cXu57z0"
+        },
+        {
+          "name": "Shipping Zip",
+          "type": "singleLineText",
+          "id": "fld7iBR3zPlii0p9i"
+        },
+        {
+          "name": "Order Tags",
+          "type": "singleLineText",
+          "id": "fldU76zUcU92ZegNs"
+        },
+        {
+          "name": "Customer Notes",
+          "type": "multilineText",
+          "id": "fldkOURRNOtMvltJ5"
+        },
+        {
+          "name": "Internal Notes",
+          "type": "multilineText",
+          "id": "fldkLWin8d2KM6dPa"
+        },
+        {
+          "name": "Source URL",
+          "type": "url",
+          "id": "fldMoMXg8z7HcFOC5"
+        },
+        {
+          "name": "Product Types",
+          "type": "multipleSelects",
+          "id": "fldEB44BlyMvRZjpP"
+        },
+        {
+          "name": "Gang Sheet Required",
+          "type": "checkbox",
+          "id": "fld4HSg6Xef5iIt29"
+        },
+        {
+          "name": "File Status",
+          "type": "singleSelect",
+          "id": "fldq5JQ6VcGeBCWI5"
+        },
+        {
+          "name": "Discount Amount",
+          "type": "currency",
+          "id": "fldNOEX0uf52J6YRV"
+        },
+        {
+          "name": "Payment Method",
+          "type": "singleLineText",
+          "id": "fldpdMB3nNhpSno3V"
+        },
+        {
+          "name": "Created At",
+          "type": "dateTime",
+          "id": "fldcfJQ99AcqKoB25"
+        },
+        {
+          "name": "Updated At",
+          "type": "dateTime",
+          "id": "fldPCQWRh7D7Y8Xhb"
+        },
+        {
+          "name": "Paid At",
+          "type": "dateTime",
+          "id": "fldZCIhSVse6cXbsF"
+        },
+        {
+          "name": "Priority Level",
+          "type": "singleSelect",
+          "id": "fldqzlY5byKtEOUam"
+        },
+        {
+          "name": "QC Status",
+          "type": "singleSelect",
+          "id": "fldsNiEXzyD8MtPNv"
+        },
+        {
+          "name": "Fulfilled At",
+          "type": "dateTime",
+          "id": "fld3b7IRbx855bTLR"
+        },
+        {
+          "name": "ID",
+          "type": "formula",
+          "id": "fldeThkRnZuSp2bLp"
+        },
+        {
+          "name": "Autonumber",
+          "type": "autoNumber",
+          "id": "fldM6hXHYjPLjLAym"
+        },
+        {
+          "name": "Linked Production",
+          "type": "multipleRecordLinks",
+          "id": "fldX6jnsLD2JiCSP2"
+        },
+        {
+          "name": "Linked Files",
+          "type": "singleLineText",
+          "id": "fldcI2YTSHALfB6BS"
+        },
+        {
+          "name": "Linked Shipment",
+          "type": "multipleRecordLinks",
+          "id": "fld5rwHnW0WceW2D4"
+        },
+        {
+          "name": "Batches",
+          "type": "singleLineText",
+          "id": "fldCBYqObwMBMZgIE"
+        },
+        {
+          "name": "Force Batch",
+          "type": "checkbox",
+          "id": "fldFdl2LLUEdtOunK"
+        },
+        {
+          "name": "Linked Batch",
+          "type": "multipleRecordLinks",
+          "id": "fldYiybyJuXCwdR4U"
+        },
+        {
+          "name": "Batches 2",
+          "type": "singleLineText",
+          "id": "fldO05s9QrRHwbv5I"
+        },
+        {
+          "name": "Batches 3",
+          "type": "singleLineText",
+          "id": "fldLx3BAi566778sr"
+        },
+        {
+          "name": "Record ID",
+          "type": "formula",
+          "id": "fldNymRVTQFjzkER3"
+        },
+        {
+          "name": "Batches 4",
+          "type": "multipleRecordLinks",
+          "id": "fldkESi9GQoWVuIW3"
+        },
+        {
+          "name": "Has Batch",
+          "type": "formula",
+          "id": "fld6DIWtqCpBpabcY"
+        },
+        {
+          "name": "Customers",
+          "type": "multipleRecordLinks",
+          "id": "fld3krf35deIW6oQN"
+        },
+        {
+          "name": "Production Option",
+          "type": "singleSelect",
+          "id": "fldUfhTLvWXd8iejK"
+        },
+        {
+          "name": "Fulfillment Option",
+          "type": "singleSelect",
+          "id": "fldj4Kr4rfS6j76xx"
+        },
+        {
+          "name": "Items Data (JSON)",
+          "type": "richText",
+          "id": "fldJaFcNdsZDL0ASn"
+        },
+        {
+          "name": "Shipping Label",
+          "type": "multipleAttachments",
+          "id": "fldeGe2EH90RcXYby"
+        },
+        {
+          "name": "Stage Progress",
+          "type": "formula",
+          "id": "fldJhfJXtcxfdwWlC"
+        },
+        {
+          "name": "Status Changed At",
+          "type": "lastModifiedTime",
+          "id": "flda4obtrbND34Edc"
+        },
+        {
+          "name": "Hours in Status",
+          "type": "formula",
+          "id": "fldls1tTHPVFPXhAJ"
+        },
+        {
+          "name": "Invoices",
+          "type": "multipleRecordLinks",
+          "id": "fld3Qwk7kc3PWRYa1"
+        },
+        {
+          "name": "Stuck Orders Alert",
+          "type": "formula",
+          "id": "fldhC2QODuzSiE3Ol"
+        },
+        {
+          "name": "Production Progress",
+          "type": "rollup",
+          "id": "fldmAmcYeHABKK34Q"
+        },
+        {
+          "name": "🚨 Alert Status",
+          "type": "formula",
+          "id": "fldxEpcRbS9EneLCo"
+        },
+        {
+          "name": "Committed Shipping Date",
+          "type": "date",
+          "id": "fldFIQy6MsEIr6gYu"
+        },
+        {
+          "name": "Days Until Due",
+          "type": "formula",
+          "id": "fldEtLnDnbdN8uqBR"
+        },
+        {
+          "name": "Tracking Number",
+          "type": "multipleLookupValues",
+          "id": "fldVLRsGi2bxsBK2b"
+        },
+        {
+          "name": "Batch Name",
+          "type": "multipleLookupValues",
+          "id": "fldQ8BHp89m9FnvDg"
+        },
+        {
+          "name": "Next Action Required",
+          "type": "formula",
+          "id": "fldriGfdRU9BMWyfu"
+        },
+        {
+          "name": "Dropbox Folder Link",
+          "type": "url",
+          "id": "fldVALL6h2DTjfkTy"
+        },
+        {
+          "name": "Dropbox Folder Location",
+          "type": "singleLineText",
+          "id": "fldvIV2uQ6oEmI3zq"
+        },
+        {
+          "name": "Main Folder",
+          "type": "button",
+          "id": "fld3Qr5cwpb7lcxWJ"
+        },
+        {
+          "name": "Productions",
+          "type": "singleLineText",
+          "id": "fldN9jhmohuJTm5lQ"
+        },
+        {
+          "name": "Production Status",
+          "type": "singleSelect",
+          "id": "fldPNdmHqZPrsjbwV"
+        },
+        {
+          "name": "Estimated Completion",
+          "type": "date",
+          "id": "fldcjWKuIZDgJbu2o"
+        },
+        {
+          "name": "Queue Position",
+          "type": "rollup",
+          "id": "fldjxWTeN3KUat8yy"
+        },
+        {
+          "name": "All Batches",
+          "type": "rollup",
+          "id": "fldfaoEKAGCRKDHPB"
+        },
+        {
+          "name": "Order Production Status",
+          "type": "multipleRecordLinks",
+          "id": "fldkL7SKPBjLMJTnm"
+        },
+        {
+          "name": "Pickup Confirmed",
+          "type": "date",
+          "id": "fldkO1IWGIk17yd4c"
+        },
+        {
+          "name": "Pickup Code",
+          "type": "formula",
+          "id": "fldl39VGekM64Xrhq"
+        }
+      ]
+    },
+    {
+      "name": "Order Items",
+      "fields": [
+        {
+          "name": "Item UID",
+          "type": "singleLineText",
+          "id": "fldm9mIckaelcFj1I"
+        },
+        {
+          "name": "Product Type",
+          "type": "singleSelect",
+          "id": "fldyx8BK3lYBKCchy"
+        },
+        {
+          "name": "Quantity",
+          "type": "number",
+          "id": "fldpD3bGpfPi7p0B5"
+        },
+        {
+          "name": "Unit Price",
+          "type": "currency",
+          "id": "fldg2A67gLrGh5eet"
+        },
+        {
+          "name": "Dimensions (in)",
+          "type": "singleLineText",
+          "id": "fldIZc21z34Muvd6W"
+        },
+        {
+          "name": "Needs File",
+          "type": "checkbox",
+          "id": "fldYXGnuBDVnZ2dML"
+        },
+        {
+          "name": "File URL",
+          "type": "url",
+          "id": "fldX3HbmebLjk4LiP"
+        },
+        {
+          "name": "Attachment",
+          "type": "multipleAttachments",
+          "id": "fldwI5psUTxXJbCSV"
+        },
+        {
+          "name": "Item Status",
+          "type": "singleSelect",
+          "id": "fldSOC7LV8UBPinuC"
+        },
+        {
+          "name": "Print Facility",
+          "type": "singleSelect",
+          "id": "fldQxRO7AZKd6EXBb"
+        },
+        {
+          "name": "COGS",
+          "type": "currency",
+          "id": "fldoW053OIXBblFlx"
+        },
+        {
+          "name": "Meta (JSON)",
+          "type": "richText",
+          "id": "fldhvRq8eo9METl0S"
+        },
+        {
+          "name": "Artwork QC",
+          "type": "singleSelect",
+          "id": "fldv7ip9CYeOQbDmN"
+        },
+        {
+          "name": "QC Notes",
+          "type": "multilineText",
+          "id": "fldmF8JeQrEc9Nu92"
+        },
+        {
+          "name": "Total Cost (formula)",
+          "type": "number",
+          "id": "fldynHg4NeIrHzQdx"
+        },
+        {
+          "name": "Batch Print Status",
+          "type": "singleSelect",
+          "id": "fldI915qbOf1rPaoG"
+        },
+        {
+          "name": "Overall QC Status",
+          "type": "multilineText",
+          "id": "fldznXQiDZ5c90Z5M"
+        },
+        {
+          "name": "QC Improvement Suggestions",
+          "type": "multilineText",
+          "id": "fldmSoLhveX0QVCpZ"
+        },
+        {
+          "name": "Linked Shipment",
+          "type": "multipleRecordLinks",
+          "id": "fldLCvU3JQno10f8F"
+        },
+        {
+          "name": "Line Item ID",
+          "type": "singleLineText",
+          "id": "fldCZVxXKQz6BlNWR"
+        },
+        {
+          "name": "Product ID",
+          "type": "singleLineText",
+          "id": "fld9K7v7g44PU5Vii"
+        },
+        {
+          "name": "Variant ID",
+          "type": "singleLineText",
+          "id": "fldId8ALfOw2Gh32L"
+        },
+        {
+          "name": "SKU",
+          "type": "singleLineText",
+          "id": "fldOgn132RQVUnUCO"
+        },
+        {
+          "name": "Title",
+          "type": "singleLineText",
+          "id": "fldu8HeF2ijelVCIF"
+        },
+        {
+          "name": "File Name",
+          "type": "singleLineText",
+          "id": "fld5TKUq9t8E7Bmdk"
+        },
+        {
+          "name": "Original File URL",
+          "type": "url",
+          "id": "fldAuDCWKLDZ3H4re"
+        },
+        {
+          "name": "Processed File URL",
+          "type": "url",
+          "id": "fldiwOjJmYUi6wswZ"
+        },
+        {
+          "name": "Preview URL",
+          "type": "url",
+          "id": "fldz4pfnSBOqRdLhA"
+        },
+        {
+          "name": "File DPI",
+          "type": "number",
+          "id": "fld7z5t0UxdfONUy8"
+        },
+        {
+          "name": "File Color Mode",
+          "type": "singleSelect",
+          "id": "flddhBAFj9cpSWIof"
+        },
+        {
+          "name": "File Dimensions",
+          "type": "multilineText",
+          "id": "fld7OiMvQxtt2r7mU"
+        },
+        {
+          "name": "Is Precut",
+          "type": "checkbox",
+          "id": "fldH57cF1v06sESto"
+        },
+        {
+          "name": "Is Gang Sheet",
+          "type": "checkbox",
+          "id": "fldmcC4FoiDG7xGLE"
+        },
+        {
+          "name": "Gang Sheet Length",
+          "type": "number",
+          "id": "fld4Xxbd17skU75ie"
+        },
+        {
+          "name": "Requires Shipping",
+          "type": "checkbox",
+          "id": "fld0Zd2boGeJfRgXU"
+        },
+        {
+          "name": "Fulfillable Quantity",
+          "type": "number",
+          "id": "fldD55MH7jOeeT7Jz"
+        },
+        {
+          "name": "Compare At Price",
+          "type": "currency",
+          "id": "fldUhW9m2rDEbGugz"
+        },
+        {
+          "name": "Total Discount",
+          "type": "currency",
+          "id": "fldkXgEBmPD9MEMbK"
+        },
+        {
+          "name": "Linked Order",
+          "type": "multipleRecordLinks",
+          "id": "fldn7ci5YpfOfVpR1"
+        },
+        {
+          "name": "Linked Files",
+          "type": "multipleRecordLinks",
+          "id": "fldXFAbb7H9vIyZPm"
+        },
+        {
+          "name": "Autonumber",
+          "type": "autoNumber",
+          "id": "fldrZydmL6r5wSZNk"
+        },
+        {
+          "name": "Order Item ID",
+          "type": "formula",
+          "id": "fld62Pz5Ab0xjI41v"
+        },
+        {
+          "name": "Linked Production",
+          "type": "multipleRecordLinks",
+          "id": "fldgvaYz9zRUWl1Xn"
+        },
+        {
+          "name": "Batch ID",
+          "type": "multipleRecordLinks",
+          "id": "fldexKTU5GnhCAtU3"
+        },
+        {
+          "name": "Cutline References",
+          "type": "multipleAttachments",
+          "id": "fldD8GqWfBN1xEtY2"
+        },
+        {
+          "name": "Printer Assignment",
+          "type": "singleSelect",
+          "id": "fldA0b9tP2Tk7R8d2"
+        },
+        {
+          "name": "Has Batch",
+          "type": "formula",
+          "id": "fld5AUuSNMiaGb7Hx"
+        },
+        {
+          "name": "Precut Qty",
+          "type": "number",
+          "id": "fldKfOpDJNAdas5I3"
+        },
+        {
+          "name": "Record ID",
+          "type": "formula",
+          "id": "fldqgyx1zWHvn8HPT"
+        },
+        {
+          "name": "Order ID",
+          "type": "multipleLookupValues",
+          "id": "fldR2XfLk4G7h80zN"
+        },
+        {
+          "name": "Batch Name",
+          "type": "multipleLookupValues",
+          "id": "fldVQTDVsE697QYrL"
+        },
+        {
+          "name": "Ready for Batch",
+          "type": "formula",
+          "id": "fldx2EZXpOHdkfmsJ"
+        },
+        {
+          "name": "Rush Service",
+          "type": "multipleLookupValues",
+          "id": "fldYALV92iRcgIbyq"
+        },
+        {
+          "name": "Production Location",
+          "type": "formula",
+          "id": "fldrHRwdwMg3Qkl1i"
+        }
+      ]
+    },
+    {
+      "name": "Batches",
+      "fields": [
+        {
+          "name": "Autonumber",
+          "type": "autoNumber",
+          "id": "fldukE2fpHU6LBkGv"
+        },
+        {
+          "name": "Batch Name",
+          "type": "singleLineText",
+          "id": "fldIX6mo4Y4fNE1s3"
+        },
+        {
+          "name": "Created",
+          "type": "dateTime",
+          "id": "fldaJOZ6SVUAfSAdg"
+        },
+        {
+          "name": "Print Type",
+          "type": "singleSelect",
+          "id": "fld0jhoijVXuTw4MP"
+        },
+        {
+          "name": "Priority",
+          "type": "singleSelect",
+          "id": "fldqGXJGhNOcQfPl0"
+        },
+        {
+          "name": "Linked Order Item",
+          "type": "multipleRecordLinks",
+          "id": "fldhEHuQzqAf05FLK"
+        },
+        {
+          "name": "Linked Production",
+          "type": "multipleRecordLinks",
+          "id": "fldniWcyQ6DYl9F8n"
+        },
+        {
+          "name": "Batch Status",
+          "type": "singleSelect",
+          "id": "fld33wpRtzl85kWeS"
+        },
+        {
+          "name": "Status Color",
+          "type": "formula",
+          "id": "fldfLeLPpu16RadP9"
+        },
+        {
+          "name": "Batch QR String",
+          "type": "formula",
+          "id": "fld8YmNoPF7wUh19l"
+        },
+        {
+          "name": "Batch QR Code",
+          "type": "multipleAttachments",
+          "id": "fldRpZFYO1PjLLXU4"
+        },
+        {
+          "name": "Batch Sheet PDF",
+          "type": "multipleAttachments",
+          "id": "fld0N0ECf7cvmhmYX"
+        },
+        {
+          "name": "Material Length",
+          "type": "number",
+          "id": "fldAsaA7Vm7p2yPfM"
+        },
+        {
+          "name": "Material Cost",
+          "type": "currency",
+          "id": "fld0TLOj37W4lBY4c"
+        },
+        {
+          "name": "Batch Completed",
+          "type": "dateTime",
+          "id": "fldg30cOo9JRgXvDw"
+        },
+        {
+          "name": "QC Status",
+          "type": "singleSelect",
+          "id": "fldYEWa3FOwXCsMr3"
+        },
+        {
+          "name": "QC Notes",
+          "type": "multilineText",
+          "id": "fldp9IMLHIE525Xcm"
+        },
+        {
+          "name": "Internal Notes",
+          "type": "multilineText",
+          "id": "fldUVS0r1QXzy4Mtv"
+        },
+        {
+          "name": "Stage History",
+          "type": "multilineText",
+          "id": "fldEI6LZz3iHoTMGQ"
+        },
+        {
+          "name": "Total Items",
+          "type": "count",
+          "id": "fldRWQpvA06ne3oyS"
+        },
+        {
+          "name": "Total Orders",
+          "type": "count",
+          "id": "fldXAcSIPOfCX4GWp"
+        },
+        {
+          "name": "Total Quantity",
+          "type": "rollup",
+          "id": "fld4aibUW2GTwoKS9"
+        },
+        {
+          "name": "Production Time",
+          "type": "formula",
+          "id": "fldltHpOqEly9JHbi"
+        },
+        {
+          "name": "Operator",
+          "type": "singleCollaborator",
+          "id": "fldjKEHTChtrhOzzH"
+        },
+        {
+          "name": "Defect Count",
+          "type": "rollup",
+          "id": "fldXWL38TkWerIbuT"
+        },
+        {
+          "name": "Reprint Items",
+          "type": "singleLineText",
+          "id": "fldVPd8pOSwq220pN"
+        },
+        {
+          "name": "Days Old",
+          "type": "formula",
+          "id": "fld7DVdBQdCus9pDH"
+        },
+        {
+          "name": "Is Overdue",
+          "type": "formula",
+          "id": "fldP8MZDeps54kA1B"
+        },
+        {
+          "name": "Completion %",
+          "type": "formula",
+          "id": "fldsajnZScEjOxeNf"
+        },
+        {
+          "name": "Completed Items",
+          "type": "rollup",
+          "id": "fldQBqhCIFwEwGc1f"
+        },
+        {
+          "name": "Last Modified",
+          "type": "lastModifiedTime",
+          "id": "fldUX9OTjbDPzwaHP"
+        },
+        {
+          "name": "Printer Used",
+          "type": "multipleLookupValues",
+          "id": "fldYZHpopYfPlsflI"
+        },
+        {
+          "name": "Ship Completed (from Production Records)",
+          "type": "multipleLookupValues",
+          "id": "fldwdSznPDDZUyyus"
+        },
+        {
+          "name": "Cut Completed (from Production Records)",
+          "type": "multipleLookupValues",
+          "id": "fldeCyBumVr6HtivJ"
+        },
+        {
+          "name": "QC Completed (from Production Records)",
+          "type": "multipleLookupValues",
+          "id": "fldx2BoARYqbyOQDw"
+        },
+        {
+          "name": "Print Completed (from Production Records)",
+          "type": "multipleLookupValues",
+          "id": "fldBONEZrt3XxhiUX"
+        },
+        {
+          "name": "Print Started (from Production Records)",
+          "type": "multipleLookupValues",
+          "id": "fld13jQdYPXC6wIuH"
+        },
+        {
+          "name": "Batch ID",
+          "type": "formula",
+          "id": "fldmeFssbbyN8E6hK"
+        },
+        {
+          "name": "Linked Order",
+          "type": "multipleLookupValues",
+          "id": "fldyFTPBUzb8j5xoK"
+        },
+        {
+          "name": "Order ID",
+          "type": "multipleRecordLinks",
+          "id": "fldI6karFrv3OeJOq"
+        },
+        {
+          "name": "Orders",
+          "type": "multipleRecordLinks",
+          "id": "fldaeZ9Gbz684MsXY"
+        },
+        {
+          "name": "Mixed Product Types",
+          "type": "checkbox",
+          "id": "fldXFqoUSx7yu9j4M"
+        },
+        {
+          "name": "Estimated Start Time",
+          "type": "date",
+          "id": "fldttjhfVjZRSwzwv"
+        },
+        {
+          "name": "Estimated Completion Time",
+          "type": "date",
+          "id": "fldI1lrIFFjys8hvi"
+        },
+        {
+          "name": "Actual Start Time",
+          "type": "date",
+          "id": "fldTkWE9HTDnBXfbD"
+        },
+        {
+          "name": "Actual Completion Time",
+          "type": "date",
+          "id": "fldFEzd0n8iLHkX7C"
+        },
+        {
+          "name": "Order IDs",
+          "type": "formula",
+          "id": "fldGzZE8c8CueB6QS"
+        },
+        {
+          "name": "Order Production Status",
+          "type": "multipleRecordLinks",
+          "id": "fldNt1vAujhMKo2SW"
+        },
+        {
+          "name": "Queue Position",
+          "type": "number",
+          "id": "fldrOvYC3RyZ78Y7v"
+        },
+        {
+          "name": "Facility",
+          "type": "singleLineText",
+          "id": "fldYxjcxnYZUypUPW"
+        },
+        {
+          "name": "Dynamic Priority Score",
+          "type": "number",
+          "id": "fld7vIEuL5hCqnCGe"
+        }
+      ]
+    },
+    {
+      "name": "Productions",
+      "fields": [
+        {
+          "name": "Autonumber",
+          "type": "autoNumber",
+          "id": "fldzqHGlfuKTDBQA4"
+        },
+        {
+          "name": "Production ID",
+          "type": "formula",
+          "id": "fldxlgs1H7cYMLQwu"
+        },
+        {
+          "name": "Created",
+          "type": "createdTime",
+          "id": "fldqKHmO2dCaU3VEx"
+        },
+        {
+          "name": "Order Item",
+          "type": "multipleRecordLinks",
+          "id": "fld8SpHT5CkRtVW1A"
+        },
+        {
+          "name": "Batch Name",
+          "type": "multipleLookupValues",
+          "id": "fldvwVBPpIALd0Odn"
+        },
+        {
+          "name": "Item Description",
+          "type": "multipleLookupValues",
+          "id": "fldsYeMqfVTM6VP30"
+        },
+        {
+          "name": "Quantity",
+          "type": "multipleLookupValues",
+          "id": "fldGYBglhIpCx0MKe"
+        },
+        {
+          "name": "Item QR String",
+          "type": "formula",
+          "id": "fld917i4wtgowA8Po"
+        },
+        {
+          "name": "Item QR Code",
+          "type": "multipleAttachments",
+          "id": "fld1OcxYymvH8vgcX"
+        },
+        {
+          "name": "Production Status",
+          "type": "singleSelect",
+          "id": "fldDI2lowNjyw7rxc"
+        },
+        {
+          "name": "Stage Progress",
+          "type": "formula",
+          "id": "fldmdzt5XXGXcDZa5"
+        },
+        {
+          "name": "Print Started",
+          "type": "dateTime",
+          "id": "fldPGhbJRPVc56Dhc"
+        },
+        {
+          "name": "Print Completed",
+          "type": "dateTime",
+          "id": "fldKX9pn0Y3koSFeC"
+        },
+        {
+          "name": "QC Completed",
+          "type": "dateTime",
+          "id": "fldUS6ldDvmPUgfvB"
+        },
+        {
+          "name": "Cut Completed",
+          "type": "dateTime",
+          "id": "fldsojhZ5g7ap88LI"
+        },
+        {
+          "name": "Ship Completed",
+          "type": "dateTime",
+          "id": "fldeKWXveZp56i8kq"
+        },
+        {
+          "name": "QC Status",
+          "type": "singleSelect",
+          "id": "fldfX43aGWhXuxOxk"
+        },
+        {
+          "name": "Defect Found",
+          "type": "checkbox",
+          "id": "fldIvW1914iJHUw81"
+        },
+        {
+          "name": "Defect Type",
+          "type": "multipleSelects",
+          "id": "fldSTJhxWhUlYCsMr"
+        },
+        {
+          "name": "Issue Notes",
+          "type": "multilineText",
+          "id": "fldb31pqMty4g2iAJ"
+        },
+        {
+          "name": "Issue Photos",
+          "type": "multipleAttachments",
+          "id": "fldJx9kdxK5e0ZRi6"
+        },
+        {
+          "name": "Needs Reprint",
+          "type": "checkbox",
+          "id": "fld2vb6nK6s29Vdrx"
+        },
+        {
+          "name": "Reprint Count",
+          "type": "number",
+          "id": "fldWrFSxTkK5TCIEO"
+        },
+        {
+          "name": "Printer Used",
+          "type": "singleSelect",
+          "id": "fldNyrSFBPewweNzx"
+        },
+        {
+          "name": "Facility",
+          "type": "singleSelect",
+          "id": "fldxQgNYYo228orar"
+        },
+        {
+          "name": "Total Time (Hours)",
+          "type": "formula",
+          "id": "fldZSJmBjA799qyG3"
+        },
+        {
+          "name": "Is Overdue",
+          "type": "formula",
+          "id": "fldUjppMUMT1I2k9O"
+        },
+        {
+          "name": "SLA Status",
+          "type": "singleSelect",
+          "id": "fldNmdhwLTiBOtJNC"
+        },
+        {
+          "name": "Priority",
+          "type": "singleSelect",
+          "id": "fldi6cv0o2NYmsybp"
+        },
+        {
+          "name": "Hold Reason",
+          "type": "multilineText",
+          "id": "fldm6JKFdhnUyxxfA"
+        },
+        {
+          "name": "Scan History",
+          "type": "richText",
+          "id": "fldtBJwu30jbmXTET"
+        },
+        {
+          "name": "Last Modified",
+          "type": "lastModifiedTime",
+          "id": "fld8dm4PNn9MzFmzi"
+        },
+        {
+          "name": "Linked Batch",
+          "type": "multipleRecordLinks",
+          "id": "fldhH2RWAaw060lu8"
+        },
+        {
+          "name": "Linked Order",
+          "type": "multipleRecordLinks",
+          "id": "fldBFwMhlL8IZghZe"
+        },
+        {
+          "name": "Estimated Completion",
+          "type": "date",
+          "id": "fldVFZaHHatczkaRV"
+        },
+        {
+          "name": "Reprint Parent",
+          "type": "multipleRecordLinks",
+          "id": "fld6Fs3OAhuZEN9yx"
+        }
+      ]
+    },
+    {
+      "name": "Order Production Status",
+      "fields": [
+        {
+          "name": "Id",
+          "type": "autoNumber",
+          "id": "fldndSmC3oGFpAQqQ"
+        },
+        {
+          "name": "Current Facility",
+          "type": "multipleLookupValues",
+          "id": "fld2ZelAcEKWZqmrO"
+        },
+        {
+          "name": "Estimated Start",
+          "type": "formula",
+          "id": "fldzCu9PR7kC3Lo0F"
+        },
+        {
+          "name": "Estimated Completion",
+          "type": "formula",
+          "id": "fldvru2SnvYARmIX4"
+        },
+        {
+          "name": "Actual Start",
+          "type": "date",
+          "id": "fldIyzrwuk1bt6LiV"
+        },
+        {
+          "name": "Actual Completion",
+          "type": "date",
+          "id": "fldmv2hzTMVxyLQcv"
+        },
+        {
+          "name": "Production Notes",
+          "type": "multilineText",
+          "id": "fldrURV19n8didkPB"
+        },
+        {
+          "name": "Behind Schedule",
+          "type": "formula",
+          "id": "fldhKcBJAdunif7fG"
+        },
+        {
+          "name": "Order ID",
+          "type": "multipleRecordLinks",
+          "id": "fldOXNblOeAWTpWVt"
+        },
+        {
+          "name": "Batches",
+          "type": "multipleRecordLinks",
+          "id": "fldUuka3q6jzatM8O"
+        }
+      ]
+    },
+    {
+      "name": "Shipments",
+      "fields": [
+        {
+          "name": "Tracking Number",
+          "type": "singleLineText",
+          "id": "fldPfKM3UtpkwG7er"
+        },
+        {
+          "name": "Carrier",
+          "type": "singleSelect",
+          "id": "fldWIH2519iazdu5B"
+        },
+        {
+          "name": "Shipped Date",
+          "type": "dateTime",
+          "id": "fldw1oYxcsMABqKHB"
+        },
+        {
+          "name": "Label Cost",
+          "type": "currency",
+          "id": "fldjHNcwrN1SXKlRT"
+        },
+        {
+          "name": "Delivered",
+          "type": "checkbox",
+          "id": "fldPL3Kg1CDX8Y4SE"
+        },
+        {
+          "name": "Label",
+          "type": "multipleAttachments",
+          "id": "fldw2qk47sl2RLZ9V"
+        },
+        {
+          "name": "Meta (JSON)",
+          "type": "multilineText",
+          "id": "fldbOQnCspi5qRBnn"
+        },
+        {
+          "name": "Order Summary",
+          "type": "singleLineText",
+          "id": "fld7t99bo4wtSU9ha"
+        },
+        {
+          "name": "Order Count",
+          "type": "count",
+          "id": "fldaTgU59dkqgIxPe"
+        },
+        {
+          "name": "Service Type",
+          "type": "singleLineText",
+          "id": "fld7v4sA0oBoBK2IW"
+        },
+        {
+          "name": "Package Weight",
+          "type": "number",
+          "id": "fldMU2gVKWwfAEKC9"
+        },
+        {
+          "name": "Package Dimensions",
+          "type": "singleLineText",
+          "id": "fldOFTvQwOBPLdWDV"
+        },
+        {
+          "name": "Insurance Amount",
+          "type": "currency",
+          "id": "fld83DMDOSzVrMZzM"
+        },
+        {
+          "name": "Signature Required",
+          "type": "checkbox",
+          "id": "fldzTFpqK4ZjlnmlG"
+        },
+        {
+          "name": "Saturday Delivery",
+          "type": "checkbox",
+          "id": "fld63ucMAdiYq3tsN"
+        },
+        {
+          "name": "Residential Address",
+          "type": "checkbox",
+          "id": "flde95PiNgxqUG7P3"
+        },
+        {
+          "name": "Delivery Instructions",
+          "type": "multilineText",
+          "id": "fldJRoj5NpqO3Xwk7"
+        },
+        {
+          "name": "Estimated Delivery",
+          "type": "date",
+          "id": "fldpTuUMkVpYNllH9"
+        },
+        {
+          "name": "Actual Delivery",
+          "type": "dateTime",
+          "id": "fldNeQFcfVUHjwgaW"
+        },
+        {
+          "name": "Delivery Signature",
+          "type": "singleLineText",
+          "id": "flddDuHMbOW7PNai8"
+        },
+        {
+          "name": "Return Label",
+          "type": "multipleAttachments",
+          "id": "fld4dZ9YnPNXGnAf6"
+        },
+        {
+          "name": "Claim Filed",
+          "type": "checkbox",
+          "id": "fldXeqeWixfWDhtX1"
+        },
+        {
+          "name": "Claim Amount",
+          "type": "currency",
+          "id": "fldHHJlh3m54TSZ7k"
+        },
+        {
+          "name": "Claim Status",
+          "type": "singleSelect",
+          "id": "fldGauuuGZwIvNIPG"
+        },
+        {
+          "name": "Linked Order",
+          "type": "multipleRecordLinks",
+          "id": "fldlgf9wui6d0MbDx"
+        },
+        {
+          "name": "Order ID",
+          "type": "singleLineText",
+          "id": "fldVITbArIRAvcuiV"
+        },
+        {
+          "name": "Submission ID",
+          "type": "singleLineText",
+          "id": "fldjthCjFhAeTRMFV"
+        },
+        {
+          "name": "Committed Shipping Date",
+          "type": "singleLineText",
+          "id": "flduNowkf9KsyQD4Y"
+        },
+        {
+          "name": "Linked Files (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fldJfaBi1hGL8qPZu"
+        },
+        {
+          "name": "Linked Production (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fld2WGvsVXZqbj6Pz"
+        },
+        {
+          "name": "Linked Order Items (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fldwsqvjwgdi4MfXz"
+        },
+        {
+          "name": "Pre-cut? (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fld52BRNch0voDgi2"
+        },
+        {
+          "name": "Production Option (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fldjIPLuKxeLfS3o7"
+        },
+        {
+          "name": "Shipping Option (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fldFWxSt0kdXwigKz"
+        },
+        {
+          "name": "Fulfillment Option (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fldFdFUQPcKUSoZA5"
+        },
+        {
+          "name": "Source (from Linked Order)",
+          "type": "multipleLookupValues",
+          "id": "fldUEUxSJoJFazWmH"
+        },
+        {
+          "name": "Order Items",
+          "type": "multipleRecordLinks",
+          "id": "fldHceZBWAZ3LH3oY"
+        },
+        {
+          "name": "Shipment Status",
+          "type": "singleSelect",
+          "id": "fldrFVCP2TW2FLMa2"
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "fields": [
+        {
+          "name": "Invoice Number",
+          "type": "singleLineText",
+          "id": "fldf58E5PoU29J6lj"
+        },
+        {
+          "name": "Linked Order",
+          "type": "multipleRecordLinks",
+          "id": "fldL4WC3Ve5bQYTxO"
+        },
+        {
+          "name": "Issue Date",
+          "type": "date",
+          "id": "fldpJw4F9OJ5W0lfm"
+        },
+        {
+          "name": "Due Date",
+          "type": "date",
+          "id": "fld35Gpb4O8FlFNXC"
+        },
+        {
+          "name": "Payment Terms",
+          "type": "singleLineText",
+          "id": "fldUUYXvk42DXtaIW"
+        },
+        {
+          "name": "Invoice Status",
+          "type": "singleSelect",
+          "id": "fldBdYyhPwbP9MNxl"
+        },
+        {
+          "name": "Subtotal",
+          "type": "currency",
+          "id": "fld8JgUQbrPpNFeLw"
+        },
+        {
+          "name": "Tax Amount",
+          "type": "currency",
+          "id": "fldXVW6ljJSLcsVEK"
+        },
+        {
+          "name": "Discount Amount",
+          "type": "currency",
+          "id": "fldC6rPcMNtKhRkrS"
+        },
+        {
+          "name": "Total Amount",
+          "type": "currency",
+          "id": "fldNna7VXpjn9hECq"
+        },
+        {
+          "name": "Amount Paid",
+          "type": "currency",
+          "id": "fldrcWshpJnC3Xzb5"
+        },
+        {
+          "name": "Balance Due",
+          "type": "formula",
+          "id": "fldqrKkLWItMmB44y"
+        },
+        {
+          "name": "Payment Method",
+          "type": "singleSelect",
+          "id": "fldZe8QiKn0wdCfUT"
+        },
+        {
+          "name": "Payment Date",
+          "type": "date",
+          "id": "fld1JSb4Rmo2ezqsc"
+        },
+        {
+          "name": "Payment Reference",
+          "type": "singleLineText",
+          "id": "fldqNpAbxda5qQNzv"
+        },
+        {
+          "name": "PDF",
+          "type": "multipleAttachments",
+          "id": "fldcjl8j6U4GaUtV6"
+        },
+        {
+          "name": "Sent Date",
+          "type": "date",
+          "id": "fldPyhLhAcFKVRPcb"
+        },
+        {
+          "name": "Sent To",
+          "type": "email",
+          "id": "fld8tT0fHkY1tvTxH"
+        },
+        {
+          "name": "Notes",
+          "type": "multilineText",
+          "id": "fldMR5aELTnUT6wnl"
+        },
+        {
+          "name": "QuickBooks ID",
+          "type": "singleLineText",
+          "id": "fldKSqMa7okGevNDJ"
+        },
+        {
+          "name": "Meta (JSON)",
+          "type": "multilineText",
+          "id": "fldZvkv9NOMHxJtdk"
+        },
+        {
+          "name": "Shopify Draft ID",
+          "type": "singleLineText",
+          "id": "fldcjtIi6iKd6zhe6"
+        },
+        {
+          "name": "Autonumber",
+          "type": "autoNumber",
+          "id": "fldpDijVg8u6uMMfh"
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "fields": [
+        {
+          "name": "Record ID",
+          "type": "formula",
+          "id": "fldrNnG4LK7Sv00H8"
+        },
+        {
+          "name": "First Name",
+          "type": "singleLineText",
+          "id": "fld4yQGexh82fvrnm"
+        },
+        {
+          "name": "Last Name",
+          "type": "singleLineText",
+          "id": "fldvc6Id9j2cRZoW8"
+        },
+        {
+          "name": "Email",
+          "type": "email",
+          "id": "fldvcLtjEB7J0x4h8"
+        },
+        {
+          "name": "Phone Number",
+          "type": "phoneNumber",
+          "id": "flda7cP3XBeUODJuv"
+        },
+        {
+          "name": "Address",
+          "type": "multilineText",
+          "id": "fldhkTEeO9PvDnRqj"
+        },
+        {
+          "name": "Company",
+          "type": "singleLineText",
+          "id": "fldsqpkSGw34ClmGU"
+        },
+        {
+          "name": "Role",
+          "type": "singleLineText",
+          "id": "fldRXZl5ZrHdAH3kY"
+        },
+        {
+          "name": "Orders",
+          "type": "multipleRecordLinks",
+          "id": "fldt0UgSmxiFFulYx"
+        },
+        {
+          "name": "Full Name",
+          "type": "formula",
+          "id": "fldZH2wp1gYLoAxZu"
+        },
+        {
+          "name": "Average Order Value",
+          "type": "formula",
+          "id": "fldu9ODr16LuU6fTp"
+        },
+        {
+          "name": "Order Summary",
+          "type": "aiText",
+          "id": "fldkiYPvOmhGWd2j5"
+        },
+        {
+          "name": "Street",
+          "type": "singleLineText",
+          "id": "fldeWxZHbP1YvB9pE"
+        },
+        {
+          "name": "City",
+          "type": "singleLineText",
+          "id": "fldhzczGJeYPdBJjL"
+        },
+        {
+          "name": "State",
+          "type": "singleLineText",
+          "id": "fldfWlr6hLhxMtrio"
+        },
+        {
+          "name": "Zip",
+          "type": "singleLineText",
+          "id": "fld2K7kogfa5wnOs4"
+        },
+        {
+          "name": "Country",
+          "type": "singleLineText",
+          "id": "fldG2fCQK6oiZs70n"
+        },
+        {
+          "name": "Email Opt-in",
+          "type": "checkbox",
+          "id": "fldXiV5tUFUJMENNX"
+        },
+        {
+          "name": "SMS Opt-in",
+          "type": "checkbox",
+          "id": "fldWibqx4RZWh90JX"
+        },
+        {
+          "name": "Tags",
+          "type": "multipleSelects",
+          "id": "flduibI6KGSYaCd7W"
+        },
+        {
+          "name": "Meta (JSON)",
+          "type": "richText",
+          "id": "fldEg9ibsKtdT73pb"
+        },
+        {
+          "name": "Full Address",
+          "type": "multilineText",
+          "id": "fldpyTo3k8eJmEyiR"
+        },
+        {
+          "name": "Tax Exempt",
+          "type": "checkbox",
+          "id": "fldIgbzYRBtgsCoC0"
+        },
+        {
+          "name": "Verified Email",
+          "type": "checkbox",
+          "id": "fldZH0P4aQ320iBeT"
+        },
+        {
+          "name": "Accepts Marketing Updated",
+          "type": "dateTime",
+          "id": "fldUGsrV8vtskbHzJ"
+        },
+        {
+          "name": "Customer Since",
+          "type": "dateTime",
+          "id": "fldo8BzG9kycJotOz"
+        },
+        {
+          "name": "Last Order Date",
+          "type": "dateTime",
+          "id": "fldj7ksGW6Mzdewx0"
+        },
+        {
+          "name": "Order Frequency",
+          "type": "singleLineText",
+          "id": "fldmw35xM7S8yEpHs"
+        },
+        {
+          "name": "Preferred Products",
+          "type": "multipleSelects",
+          "id": "fld1ZPi6Yumav77bD"
+        },
+        {
+          "name": "Risk Level",
+          "type": "singleSelect",
+          "id": "fldUpCizS0e4cjxSR"
+        },
+        {
+          "name": "Source",
+          "type": "multipleSelects",
+          "id": "fld4RAgm1slZUNuT4"
+        },
+        {
+          "name": "Browser IP",
+          "type": "singleLineText",
+          "id": "fldf7svDGQLykpghE"
+        },
+        {
+          "name": "Referral Source",
+          "type": "singleLineText",
+          "id": "fldPGB2jv1xhElaJs"
+        },
+        {
+          "name": "Autonumber",
+          "type": "autoNumber",
+          "id": "fldcGe3xa0tD1wID0"
+        },
+        {
+          "name": "ID",
+          "type": "formula",
+          "id": "fldJrPlLEfhE75B0U"
+        },
+        {
+          "name": "Orders 2",
+          "type": "multipleRecordLinks",
+          "id": "fldm7I9Sy6GLsgF2K"
+        },
+        {
+          "name": "Items Data (JSON)",
+          "type": "richText",
+          "id": "fldC0Ncqg8C8t6YM2"
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "fields": [
+        {
+          "name": "File Name",
+          "type": "singleLineText",
+          "id": "fldqwuILjc63FzW9j"
+        },
+        {
+          "name": "URL",
+          "type": "url",
+          "id": "fldm6J8uwK5gftqdW"
+        },
+        {
+          "name": "Attachment",
+          "type": "multipleAttachments",
+          "id": "fldByBMI8A91PeV0E"
+        },
+        {
+          "name": "Linked Item",
+          "type": "multipleRecordLinks",
+          "id": "fldGHCplxYSREAV0m"
+        },
+        {
+          "name": "DPI",
+          "type": "number",
+          "id": "fld11LsWp7AI7fk8B"
+        },
+        {
+          "name": "Color Mode",
+          "type": "singleSelect",
+          "id": "fldpsj54WVki3UHNl"
+        },
+        {
+          "name": "Meta (JSON)",
+          "type": "multilineText",
+          "id": "fld3dffa8rxleKFcC"
+        },
+        {
+          "name": "File Size",
+          "type": "number",
+          "id": "fldkr12AYGducqrsL"
+        },
+        {
+          "name": "Upload Date",
+          "type": "dateTime",
+          "id": "fldBOp7TiObOFVeFn"
+        },
+        {
+          "name": "Processed Date",
+          "type": "dateTime",
+          "id": "fldqkDsEZc8hDF2Vo"
+        },
+        {
+          "name": "Original Dimensions",
+          "type": "richText",
+          "id": "fldHN4ySEGaLwjapC"
+        },
+        {
+          "name": "Resolution",
+          "type": "singleLineText",
+          "id": "fldGl4HzEzd5uWLIj"
+        },
+        {
+          "name": "Has Transparency",
+          "type": "checkbox",
+          "id": "fldEZFKcZk1donxzX"
+        },
+        {
+          "name": "Backup URL",
+          "type": "url",
+          "id": "fldr9MpBVroiGE5bp"
+        },
+        {
+          "name": "File Format",
+          "type": "singleSelect",
+          "id": "fldY6vLeRSySk3J5A"
+        },
+        {
+          "name": "Autonumber",
+          "type": "autoNumber",
+          "id": "fldeaLsqts1hD9tct"
+        },
+        {
+          "name": "File ID",
+          "type": "formula",
+          "id": "fld5Cunrw1ccOKxBC"
+        },
+        {
+          "name": "Shortened URL",
+          "type": "url",
+          "id": "fldlt7m6N6RCXNjeV"
+        }
+      ]
+    },
+    {
+      "name": "Tokens",
+      "fields": [
+        {
+          "name": "Refresh Token",
+          "type": "singleLineText",
+          "id": "fldEcwrQhQ8I05eTf"
+        },
+        {
+          "name": "Updated",
+          "type": "lastModifiedTime",
+          "id": "fldcnjKqOl9tMtuAb"
+        },
+        {
+          "name": "Access Token",
+          "type": "multilineText",
+          "id": "fldccHl5tUmBmx8SH"
+        },
+        {
+          "name": "Name",
+          "type": "singleLineText",
+          "id": "fldawqJcrTjKmeLfg"
+        },
+        {
+          "name": "App Key",
+          "type": "singleLineText",
+          "id": "fldm7uMIowEbtPLVn"
+        },
+        {
+          "name": "App Secret",
+          "type": "singleLineText",
+          "id": "fldV79Ro8AKkqYE0R"
+        }
+      ]
+    }
+  ]
+}
