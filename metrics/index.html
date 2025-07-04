@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Metrics - Production Apps</title>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../config.js"></script>
+    <style>
+        .metrics-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .metrics-filters {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .time-range-tabs {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .time-tab {
+            padding: 8px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            font-size: 0.9rem;
+        }
+        
+        .time-tab.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-color);
+        }
+        
+        .metric-card.production::before {
+            background: var(--success-color);
+        }
+        
+        .metric-card.quality::before {
+            background: var(--warning-color);
+        }
+        
+        .metric-card.efficiency::before {
+            background: var(--info-color);
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--dark-color);
+        }
+        
+        .metric-label {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .metric-change {
+            font-size: 0.9rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .change-positive {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .change-negative {
+            background: var(--error-bg);
+            color: var(--error-text);
+        }
+        
+        .change-neutral {
+            background: var(--light-color);
+            color: #666;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chart-placeholder {
+            height: 300px;
+            background: var(--light-color);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+        
+        .facility-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .facility-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+        
+        .facility-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .facility-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .facility-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-online {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .status-busy {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+        
+        .status-offline {
+            background: var(--error-bg);
+            color: var(--error-text);
+        }
+        
+        .facility-metrics {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .facility-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .facility-metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-name {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .metric-val {
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .alerts-section {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        
+        .alerts-header {
+            background: var(--error-bg);
+            color: var(--error-text);
+            padding: 15px 20px;
+            border-radius: var(--radius) var(--radius) 0 0;
+            font-weight: 600;
+        }
+        
+        .alert-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .alert-item:last-child {
+            border-bottom: none;
+        }
+        
+        .alert-content {
+            flex-grow: 1;
+        }
+        
+        .alert-type {
+            font-weight: 600;
+            color: var(--error-color);
+            margin-bottom: 5px;
+        }
+        
+        .alert-message {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .alert-time {
+            font-size: 0.8rem;
+            color: #999;
+            white-space: nowrap;
+            margin-left: 15px;
+        }
+        
+        .performance-indicators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .kpi-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .kpi-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .kpi-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .kpi-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .metrics-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                justify-content: center;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .facility-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-brand">Production Apps</a>
+            <div class="nav-links">
+                <a href="../index.html" class="nav-link">Dashboard</a>
+                <a href="index.html" class="nav-link active">Metrics</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="app-container metrics-container">
+            <h1>📊 Production Metrics Dashboard</h1>
+            
+            <div class="metrics-filters">
+                <div class="filter-group">
+                    <label>Time Range:</label>
+                    <div class="time-range-tabs">
+                        <div class="time-tab" onclick="setTimeRange('today')">Today</div>
+                        <div class="time-tab active" onclick="setTimeRange('week')">This Week</div>
+                        <div class="time-tab" onclick="setTimeRange('month')">This Month</div>
+                        <div class="time-tab" onclick="setTimeRange('quarter')">Quarter</div>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="facility-filter">Facility:</label>
+                    <select id="facility-filter" class="form-select" onchange="filterByFacility()">
+                        <option value="ALL">All Facilities</option>
+                        <option value="CHICO">CHICO</option>
+                        <option value="OUTPOST">OUTPOST</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-secondary btn-small" onclick="refreshMetrics()">🔄 Refresh</button>
+            </div>
+            
+            <!-- Key Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card production">
+                    <div class="metric-value" id="total-orders">247</div>
+                    <div class="metric-label">Total Orders</div>
+                    <div class="metric-change change-positive" id="orders-change">+15% vs last week</div>
+                </div>
+                
+                <div class="metric-card production">
+                    <div class="metric-value" id="completed-orders">189</div>
+                    <div class="metric-label">Completed Orders</div>
+                    <div class="metric-change change-positive" id="completed-change">+8% vs last week</div>
+                </div>
+                
+                <div class="metric-card quality">
+                    <div class="metric-value" id="avg-turnaround">2.3</div>
+                    <div class="metric-label">Avg Turnaround (days)</div>
+                    <div class="metric-change change-negative" id="turnaround-change">+0.2 vs last week</div>
+                </div>
+                
+                <div class="metric-card quality">
+                    <div class="metric-value" id="quality-score">94.5%</div>
+                    <div class="metric-label">Quality Score</div>
+                    <div class="metric-change change-positive" id="quality-change">+1.2% vs last week</div>
+                </div>
+                
+                <div class="metric-card efficiency">
+                    <div class="metric-value" id="capacity-utilization">78%</div>
+                    <div class="metric-label">Capacity Utilization</div>
+                    <div class="metric-change change-positive" id="capacity-change">+5% vs last week</div>
+                </div>
+                
+                <div class="metric-card efficiency">
+                    <div class="metric-value" id="on-time-delivery">91.2%</div>
+                    <div class="metric-label">On-Time Delivery</div>
+                    <div class="metric-change change-neutral" id="delivery-change">-0.8% vs last week</div>
+                </div>
+            </div>
+            
+            <!-- Performance Indicators -->
+            <div class="performance-indicators">
+                <div class="kpi-card">
+                    <span class="kpi-icon">⏱️</span>
+                    <div class="kpi-value" id="avg-print-time">18 min</div>
+                    <div class="kpi-label">Avg Print Time</div>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-icon">🔄</span>
+                    <div class="kpi-value" id="reprint-rate">3.2%</div>
+                    <div class="kpi-label">Reprint Rate</div>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-icon">📦</span>
+                    <div class="kpi-value" id="orders-per-day">35</div>
+                    <div class="kpi-label">Orders/Day</div>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-icon">👥</span>
+                    <div class="kpi-value" id="active-operators">8</div>
+                    <div class="kpi-label">Active Operators</div>
+                </div>
+            </div>
+            
+            <!-- Production Volume Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Production Volume Trend</div>
+                    <div class="chart-controls">
+                        <button class="btn btn-small btn-secondary" onclick="toggleChart('orders')">Orders</button>
+                        <button class="btn btn-small btn-secondary" onclick="toggleChart('revenue')">Revenue</button>
+                    </div>
+                </div>
+                <div class="chart-placeholder">
+                    📈 Production volume chart would display here<br>
+                    <small>Integration with charting library (Chart.js, D3.js) needed</small>
+                </div>
+            </div>
+            
+            <!-- Facility Comparison -->
+            <div class="facility-comparison">
+                <div class="facility-card">
+                    <div class="facility-header">
+                        <div class="facility-name">CHICO</div>
+                        <div class="facility-status status-online">ONLINE</div>
+                    </div>
+                    <div class="facility-metrics">
+                        <div class="facility-metric">
+                            <span class="metric-name">Orders Today</span>
+                            <span class="metric-val">18</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Queue Items</span>
+                            <span class="metric-val">4</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Avg Turnaround</span>
+                            <span class="metric-val">2.1 days</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Utilization</span>
+                            <span class="metric-val">82%</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Quality Score</span>
+                            <span class="metric-val">95.8%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="facility-card">
+                    <div class="facility-header">
+                        <div class="facility-name">OUTPOST</div>
+                        <div class="facility-status status-busy">BUSY</div>
+                    </div>
+                    <div class="facility-metrics">
+                        <div class="facility-metric">
+                            <span class="metric-name">Orders Today</span>
+                            <span class="metric-val">23</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Queue Items</span>
+                            <span class="metric-val">8</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Avg Turnaround</span>
+                            <span class="metric-val">2.4 days</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Utilization</span>
+                            <span class="metric-val">91%</span>
+                        </div>
+                        <div class="facility-metric">
+                            <span class="metric-name">Quality Score</span>
+                            <span class="metric-val">93.1%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quality Metrics Chart -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Quality & Efficiency Trends</div>
+                    <div class="chart-controls">
+                        <button class="btn btn-small btn-secondary" onclick="toggleChart('quality')">Quality</button>
+                        <button class="btn btn-small btn-secondary" onclick="toggleChart('efficiency')">Efficiency</button>
+                    </div>
+                </div>
+                <div class="chart-placeholder">
+                    📊 Quality metrics chart would display here<br>
+                    <small>Shows reprint rates, turnaround times, customer satisfaction</small>
+                </div>
+            </div>
+            
+            <!-- Alerts Section -->
+            <div class="alerts-section">
+                <div class="alerts-header">🚨 Active Alerts</div>
+                <div class="alert-item">
+                    <div class="alert-content">
+                        <div class="alert-type">Queue Backlog</div>
+                        <div class="alert-message">OUTPOST has 8+ items in queue - consider load balancing</div>
+                    </div>
+                    <div class="alert-time">5 min ago</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-content">
+                        <div class="alert-type">Quality Alert</div>
+                        <div class="alert-message">Printer D6 showing increased reprint rate (6.2%)</div>
+                    </div>
+                    <div class="alert-time">1 hour ago</div>
+                </div>
+                <div class="alert-item">
+                    <div class="alert-content">
+                        <div class="alert-type">Performance</div>
+                        <div class="alert-message">Average turnaround time increased by 15% this week</div>
+                    </div>
+                    <div class="alert-time">2 hours ago</div>
+                </div>
+            </div>
+            
+            <div id="status-message" class="status"></div>
+            
+            <div class="info-box">
+                <h3>📈 Metrics Overview</h3>
+                <ul>
+                    <li><strong>Production Volume:</strong> Total orders processed and completion rates</li>
+                    <li><strong>Quality Metrics:</strong> Reprint rates, customer satisfaction, defect tracking</li>
+                    <li><strong>Efficiency Indicators:</strong> Turnaround times, capacity utilization, throughput</li>
+                    <li><strong>Facility Comparison:</strong> Performance across different production locations</li>
+                    <li><strong>Real-time Alerts:</strong> Automated notifications for performance issues</li>
+                </ul>
+                <p><strong>Note:</strong> All metrics update automatically every 5 minutes during business hours.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTimeRange = 'week';
+        let currentFacility = 'ALL';
+        let metricsData = {};
+        
+        async function loadMetrics() {
+            showStatus("Loading production metrics...", "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('METRICS'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        timeRange: currentTimeRange,
+                        facility: currentFacility,
+                        includeAlerts: true,
+                        includeComparison: true
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    metricsData = result.metrics;
+                    updateMetricsDisplay();
+                    showStatus("Metrics updated", "success");
+                } else {
+                    showStatus(result.message || "Error loading metrics", "error");
+                    loadSampleMetrics();
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    loadSampleMetrics();
+                    showStatus("Demo mode: Using sample metrics (webhook offline)", "warning");
+                } else {
+                    showStatus(`Metrics error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function loadSampleMetrics() {
+            // Sample metrics data
+            metricsData = {
+                totalOrders: 247,
+                completedOrders: 189,
+                avgTurnaround: 2.3,
+                qualityScore: 94.5,
+                capacityUtilization: 78,
+                onTimeDelivery: 91.2,
+                avgPrintTime: 18,
+                reprintRate: 3.2,
+                ordersPerDay: 35,
+                activeOperators: 8,
+                changes: {
+                    orders: 15,
+                    completed: 8,
+                    turnaround: 0.2,
+                    quality: 1.2,
+                    capacity: 5,
+                    delivery: -0.8
+                }
+            };
+            
+            updateMetricsDisplay();
+        }
+        
+        function updateMetricsDisplay() {
+            // Update main metrics
+            document.getElementById('total-orders').textContent = metricsData.totalOrders || '247';
+            document.getElementById('completed-orders').textContent = metricsData.completedOrders || '189';
+            document.getElementById('avg-turnaround').textContent = metricsData.avgTurnaround || '2.3';
+            document.getElementById('quality-score').textContent = (metricsData.qualityScore || 94.5) + '%';
+            document.getElementById('capacity-utilization').textContent = (metricsData.capacityUtilization || 78) + '%';
+            document.getElementById('on-time-delivery').textContent = (metricsData.onTimeDelivery || 91.2) + '%';
+            
+            // Update KPIs
+            document.getElementById('avg-print-time').textContent = (metricsData.avgPrintTime || 18) + ' min';
+            document.getElementById('reprint-rate').textContent = (metricsData.reprintRate || 3.2) + '%';
+            document.getElementById('orders-per-day').textContent = metricsData.ordersPerDay || '35';
+            document.getElementById('active-operators').textContent = metricsData.activeOperators || '8';
+            
+            // Update change indicators
+            if (metricsData.changes) {
+                updateChangeIndicator('orders-change', metricsData.changes.orders, '% vs last week');
+                updateChangeIndicator('completed-change', metricsData.changes.completed, '% vs last week');
+                updateChangeIndicator('turnaround-change', metricsData.changes.turnaround, ' vs last week', true);
+                updateChangeIndicator('quality-change', metricsData.changes.quality, '% vs last week');
+                updateChangeIndicator('capacity-change', metricsData.changes.capacity, '% vs last week');
+                updateChangeIndicator('delivery-change', metricsData.changes.delivery, '% vs last week');
+            }
+        }
+        
+        function updateChangeIndicator(elementId, value, suffix, isInverse = false) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const isPositive = isInverse ? value < 0 : value > 0;
+            const isNegative = isInverse ? value > 0 : value < 0;
+            
+            element.className = 'metric-change ' + 
+                (isPositive ? 'change-positive' : 
+                 isNegative ? 'change-negative' : 'change-neutral');
+                 
+            const sign = value > 0 ? '+' : '';
+            element.textContent = `${sign}${value}${suffix}`;
+        }
+        
+        function setTimeRange(range) {
+            currentTimeRange = range;
+            
+            // Update UI
+            document.querySelectorAll('.time-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            loadMetrics();
+        }
+        
+        function filterByFacility() {
+            currentFacility = document.getElementById('facility-filter').value;
+            loadMetrics();
+        }
+        
+        function refreshMetrics() {
+            loadMetrics();
+        }
+        
+        function toggleChart(chartType) {
+            showStatus(`Switching to ${chartType} view`, "info");
+            // In a real implementation, this would update the chart display
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status status-${type} show`;
+            statusDiv.textContent = message;
+            
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Auto-refresh metrics every 5 minutes during business hours
+        function setupAutoRefresh() {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            // Only auto-refresh during business hours (8 AM - 6 PM)
+            if (hour >= 8 && hour < 18) {
+                setInterval(loadMetrics, 5 * 60 * 1000); // 5 minutes
+            }
+        }
+        
+        // Initialize
+        window.onload = function() {
+            loadMetrics();
+            setupAutoRefresh();
+        };
+    </script>
+</body>
+</html>

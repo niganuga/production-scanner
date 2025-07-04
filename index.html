@@ -185,14 +185,14 @@
                     <div class="app-icon">📦</div>
                     <div class="app-title">Pickup Confirmation</div>
                     <div class="app-description">Manage order pickups with signature capture and photo proof.</div>
-                    <div class="app-status status-coming-soon">Coming Soon</div>
+                    <div class="app-status status-ready">Ready</div>
                 </div>
                 
                 <div class="app-card customer" onclick="openApp('status')">
                     <div class="app-icon">🔍</div>
                     <div class="app-title">Order Status Lookup</div>
                     <div class="app-description">Check order progress with visual status indicators and estimated completion.</div>
-                    <div class="app-status status-coming-soon">Coming Soon</div>
+                    <div class="app-status status-ready">Ready</div>
                 </div>
                 
                 <!-- Operations Apps -->
@@ -200,21 +200,21 @@
                     <div class="app-icon">🔄</div>
                     <div class="app-title">Reprint Requests</div>
                     <div class="app-description">Report defects and request reprints with photo documentation.</div>
-                    <div class="app-status status-coming-soon">Coming Soon</div>
+                    <div class="app-status status-ready">Ready</div>
                 </div>
                 
                 <div class="app-card operations" onclick="openApp('queue')">
                     <div class="app-icon">📋</div>
                     <div class="app-title">Queue Monitor</div>
                     <div class="app-description">Live production queue with drag-to-reorder and priority management.</div>
-                    <div class="app-status status-coming-soon">Coming Soon</div>
+                    <div class="app-status status-ready">Ready</div>
                 </div>
                 
                 <div class="app-card operations" onclick="openApp('shipping')">
                     <div class="app-icon">🚚</div>
                     <div class="app-title">Shipping Preparation</div>
                     <div class="app-description">Organize shipments, create labels, and track packed items.</div>
-                    <div class="app-status status-coming-soon">Coming Soon</div>
+                    <div class="app-status status-ready">Ready</div>
                 </div>
                 
                 <!-- Management Apps -->
@@ -222,7 +222,7 @@
                     <div class="app-icon">📊</div>
                     <div class="app-title">Production Metrics</div>
                     <div class="app-description">Real-time KPIs, facility comparison, and trend analysis.</div>
-                    <div class="app-status status-coming-soon">Coming Soon</div>
+                    <div class="app-status status-ready">Ready</div>
                 </div>
             </div>
             
@@ -281,11 +281,7 @@
             };
             
             if (appPaths[appName]) {
-                if (appName === 'scanner') {
-                    window.location.href = appPaths[appName];
-                } else {
-                    alert(`${appName.charAt(0).toUpperCase() + appName.slice(1)} app coming soon!`);
-                }
+                window.location.href = appPaths[appName];
             }
         }
         

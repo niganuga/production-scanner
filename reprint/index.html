@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprint Requests - Production Apps</title>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../config.js"></script>
+    <style>
+        .reprint-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .item-lookup {
+            margin-bottom: 30px;
+        }
+        
+        .item-details {
+            display: none;
+            background: var(--light-color);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+        }
+        
+        .defect-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .defect-category {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .defect-category:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .defect-category.selected {
+            border-color: var(--error-color);
+            background: var(--error-bg);
+        }
+        
+        .defect-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .photo-upload {
+            margin: 20px 0;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .photo-item {
+            position: relative;
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        
+        .photo-preview {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+        
+        .photo-remove {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--error-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .severity-selector {
+            margin: 20px 0;
+        }
+        
+        .severity-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        
+        .severity-option {
+            padding: 8px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .severity-low {
+            border-color: var(--warning-color);
+            color: var(--warning-text);
+        }
+        
+        .severity-low.selected {
+            background: var(--warning-bg);
+            border-color: var(--warning-color);
+        }
+        
+        .severity-medium {
+            border-color: var(--info-color);
+            color: var(--info-text);
+        }
+        
+        .severity-medium.selected {
+            background: var(--info-bg);
+            border-color: var(--info-color);
+        }
+        
+        .severity-high {
+            border-color: var(--error-color);
+            color: var(--error-text);
+        }
+        
+        .severity-high.selected {
+            background: var(--error-bg);
+            border-color: var(--error-color);
+        }
+        
+        .reprint-actions {
+            display: none;
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--error-bg);
+            border-radius: var(--radius);
+            text-align: center;
+        }
+        
+        .quantity-input {
+            width: 80px;
+            text-align: center;
+            margin: 0 10px;
+        }
+        
+        .item-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .history-section {
+            margin: 20px 0;
+            background: white;
+            padding: 15px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+        }
+        
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 10px;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .defect-categories {
+                grid-template-columns: 1fr;
+            }
+            
+            .severity-options {
+                justify-content: center;
+            }
+            
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-brand">Production Apps</a>
+            <div class="nav-links">
+                <a href="../index.html" class="nav-link">Dashboard</a>
+                <a href="index.html" class="nav-link active">Reprint</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="app-container reprint-container">
+            <h1>🔄 Reprint Request</h1>
+            
+            <div class="item-lookup">
+                <div class="form-group">
+                    <label class="form-label" for="item-search">Production ID or Order Item</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="item-search" class="form-input" 
+                               placeholder="P093, TS-1234-1, or scan QR code"
+                               style="flex: 1;">
+                        <button class="btn btn-primary" onclick="searchItem()">Find Item</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="item-details" class="item-details">
+                <div class="item-info">
+                    <div>
+                        <h3>Item Information</h3>
+                        <p><strong>Production ID:</strong> <span id="production-id">-</span></p>
+                        <p><strong>Order ID:</strong> <span id="order-id">-</span></p>
+                        <p><strong>Description:</strong> <span id="item-description">-</span></p>
+                        <p><strong>Quantity:</strong> <span id="item-quantity">-</span></p>
+                    </div>
+                    <div>
+                        <h3>Current Status</h3>
+                        <p><strong>Stage:</strong> <span id="current-stage">-</span></p>
+                        <p><strong>Facility:</strong> <span id="current-facility">-</span></p>
+                        <p><strong>Last Updated:</strong> <span id="last-updated">-</span></p>
+                        <p><strong>Reprint Count:</strong> <span id="reprint-count">0</span></p>
+                    </div>
+                </div>
+                
+                <div class="history-section">
+                    <h4>Production History</h4>
+                    <div id="production-history"></div>
+                </div>
+                
+                <h3>🚨 Report Defect</h3>
+                
+                <div class="defect-categories">
+                    <div class="defect-category" onclick="selectDefectType('print-quality')">
+                        <span class="defect-icon">🖨️</span>
+                        <strong>Print Quality</strong>
+                        <p>Color, alignment, streaks</p>
+                    </div>
+                    
+                    <div class="defect-category" onclick="selectDefectType('material')">
+                        <span class="defect-icon">📄</span>
+                        <strong>Material Issue</strong>
+                        <p>Vinyl defects, adhesion</p>
+                    </div>
+                    
+                    <div class="defect-category" onclick="selectDefectType('cutting')">
+                        <span class="defect-icon">✂️</span>
+                        <strong>Cutting Error</strong>
+                        <p>Miscut, incomplete weeding</p>
+                    </div>
+                    
+                    <div class="defect-category" onclick="selectDefectType('design')">
+                        <span class="defect-icon">🎨</span>
+                        <strong>Design Issue</strong>
+                        <p>Wrong artwork, sizing</p>
+                    </div>
+                    
+                    <div class="defect-category" onclick="selectDefectType('damage')">
+                        <span class="defect-icon">💥</span>
+                        <strong>Damage</strong>
+                        <p>Torn, scratched, bent</p>
+                    </div>
+                    
+                    <div class="defect-category" onclick="selectDefectType('other')">
+                        <span class="defect-icon">❓</span>
+                        <strong>Other</strong>
+                        <p>Custom issue</p>
+                    </div>
+                </div>
+                
+                <div class="severity-selector">
+                    <label class="form-label">Issue Severity</label>
+                    <div class="severity-options">
+                        <div class="severity-option severity-low" onclick="selectSeverity('low')">
+                            Minor • Can Ship
+                        </div>
+                        <div class="severity-option severity-medium" onclick="selectSeverity('medium')">
+                            Moderate • Customer Notice
+                        </div>
+                        <div class="severity-option severity-high" onclick="selectSeverity('high')">
+                            Major • Must Reprint
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="photo-upload">
+                    <label class="form-label">📸 Photo Documentation (Required)</label>
+                    <input type="file" id="defect-photos" accept="image/*" multiple capture="environment" class="form-input">
+                    <p style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                        Take clear photos showing the defect. Multiple angles recommended.
+                    </p>
+                    <div id="photo-grid" class="photo-grid"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="defect-notes">Detailed Description</label>
+                    <textarea id="defect-notes" class="form-input" rows="4" 
+                              placeholder="Describe the defect in detail. Include when it was discovered, specific location, and any relevant details..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Reprint Quantity</label>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <button class="btn btn-secondary btn-small" onclick="adjustQuantity(-1)">-</button>
+                        <input type="number" id="reprint-quantity" class="form-input quantity-input" value="1" min="1">
+                        <button class="btn btn-secondary btn-small" onclick="adjustQuantity(1)">+</button>
+                        <span style="margin-left: 10px;">of <span id="max-quantity">1</span> total</span>
+                    </div>
+                </div>
+                
+                <div class="reprint-actions">
+                    <h3>🔄 Submit Reprint Request</h3>
+                    <p>This will create a new production record and notify the production team</p>
+                    <button class="btn btn-danger btn-large" onclick="submitReprintRequest()">Submit Reprint Request</button>
+                </div>
+            </div>
+            
+            <div id="status-message" class="status"></div>
+            
+            <div class="info-box">
+                <h3>📋 Reprint Process</h3>
+                <ol>
+                    <li><strong>Find Item:</strong> Search by production ID or order number</li>
+                    <li><strong>Identify Defect:</strong> Select the type of issue found</li>
+                    <li><strong>Document:</strong> Take clear photos showing the problem</li>
+                    <li><strong>Assess Severity:</strong> Determine if reprint is required</li>
+                    <li><strong>Submit Request:</strong> Creates new production job automatically</li>
+                </ol>
+                <p><strong>Note:</strong> High severity defects automatically trigger reprints. Minor issues may be noted for customer communication.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentItem = null;
+        let selectedDefectType = null;
+        let selectedSeverity = null;
+        let uploadedPhotos = [];
+        
+        async function searchItem() {
+            const searchTerm = document.getElementById('item-search').value.trim();
+            if (!searchTerm) {
+                showStatus("Please enter a production ID or order item", "error");
+                return;
+            }
+            
+            showStatus("Searching for item...", "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('STATUS'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        searchTerm: searchTerm,
+                        searchType: 'production'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.item) {
+                    displayItemDetails(result.item);
+                    showStatus("Item found!", "success");
+                } else {
+                    showStatus(result.message || "Item not found. Check the production ID.", "error");
+                    hideItemDetails();
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    // Demo mode with sample data
+                    displaySampleItem(searchTerm);
+                    showStatus("Demo mode: Using sample item data (webhook offline)", "warning");
+                } else {
+                    showStatus(`Search error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function displaySampleItem(searchTerm) {
+            const sampleItem = {
+                productionId: searchTerm.startsWith('P') ? searchTerm : 'P093',
+                orderId: 'TS-1234',
+                description: 'Custom Logo Transfer - 4" x 6"',
+                quantity: 5,
+                currentStage: 'Quality Check',
+                facility: 'CHICO',
+                lastUpdated: new Date().toISOString(),
+                reprintCount: 0,
+                history: [
+                    { stage: 'Print Started', timestamp: '2024-01-15T10:00:00Z', operator: 'John' },
+                    { stage: 'Print Complete', timestamp: '2024-01-15T11:30:00Z', operator: 'John' },
+                    { stage: 'QC Started', timestamp: '2024-01-15T14:00:00Z', operator: 'Sarah' }
+                ]
+            };
+            
+            displayItemDetails(sampleItem);
+        }
+        
+        function displayItemDetails(item) {
+            currentItem = item;
+            
+            document.getElementById('production-id').textContent = item.productionId;
+            document.getElementById('order-id').textContent = item.orderId;
+            document.getElementById('item-description').textContent = item.description;
+            document.getElementById('item-quantity').textContent = item.quantity;
+            document.getElementById('current-stage').textContent = item.currentStage;
+            document.getElementById('current-facility').textContent = item.facility;
+            document.getElementById('last-updated').textContent = new Date(item.lastUpdated).toLocaleString();
+            document.getElementById('reprint-count').textContent = item.reprintCount || 0;
+            document.getElementById('max-quantity').textContent = item.quantity;
+            
+            // Update production history
+            const historyDiv = document.getElementById('production-history');
+            historyDiv.innerHTML = '';
+            
+            if (item.history && item.history.length > 0) {
+                item.history.forEach(entry => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `
+                        <strong>${entry.stage}</strong> - ${new Date(entry.timestamp).toLocaleString()}
+                        ${entry.operator ? `<br><small>by ${entry.operator}</small>` : ''}
+                    `;
+                    historyDiv.appendChild(historyItem);
+                });
+            } else {
+                historyDiv.innerHTML = '<p>No production history available</p>';
+            }
+            
+            document.getElementById('item-details').style.display = 'block';
+            resetForm();
+        }
+        
+        function hideItemDetails() {
+            document.getElementById('item-details').style.display = 'none';
+            currentItem = null;
+            resetForm();
+        }
+        
+        function selectDefectType(type) {
+            selectedDefectType = type;
+            
+            // Update UI
+            document.querySelectorAll('.defect-category').forEach(cat => {
+                cat.classList.remove('selected');
+            });
+            event.target.closest('.defect-category').classList.add('selected');
+            
+            checkFormComplete();
+        }
+        
+        function selectSeverity(severity) {
+            selectedSeverity = severity;
+            
+            // Update UI
+            document.querySelectorAll('.severity-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            
+            checkFormComplete();
+        }
+        
+        function adjustQuantity(change) {
+            const input = document.getElementById('reprint-quantity');
+            const newValue = parseInt(input.value) + change;
+            const maxValue = currentItem ? currentItem.quantity : 1;
+            
+            if (newValue >= 1 && newValue <= maxValue) {
+                input.value = newValue;
+            }
+        }
+        
+        function checkFormComplete() {
+            const hasDefectType = selectedDefectType !== null;
+            const hasSeverity = selectedSeverity !== null;
+            const hasPhotos = uploadedPhotos.length > 0;
+            const hasNotes = document.getElementById('defect-notes').value.trim().length > 0;
+            
+            if (hasDefectType && hasSeverity && hasPhotos && hasNotes) {
+                document.querySelector('.reprint-actions').style.display = 'block';
+            } else {
+                document.querySelector('.reprint-actions').style.display = 'none';
+            }
+        }
+        
+        async function submitReprintRequest() {
+            if (!currentItem) {
+                showStatus("No item selected", "error");
+                return;
+            }
+            
+            const notes = document.getElementById('defect-notes').value.trim();
+            const quantity = parseInt(document.getElementById('reprint-quantity').value);
+            
+            if (!selectedDefectType || !selectedSeverity || uploadedPhotos.length === 0 || !notes) {
+                showStatus("Please complete all required fields", "error");
+                return;
+            }
+            
+            showStatus("Submitting reprint request...", "info");
+            
+            try {
+                const reprintData = {
+                    originalProductionId: currentItem.productionId,
+                    orderId: currentItem.orderId,
+                    defectType: selectedDefectType,
+                    severity: selectedSeverity,
+                    notes: notes,
+                    photos: uploadedPhotos,
+                    reprintQuantity: quantity,
+                    originalQuantity: currentItem.quantity,
+                    reportedBy: localStorage.getItem('facilityName') || 'QC Team',
+                    facility: currentItem.facility,
+                    timestamp: new Date().toISOString()
+                };
+                
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('REPRINT'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(reprintData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`Reprint request submitted! New production ID: ${result.newProductionId}`, "success");
+                    resetFormComplete();
+                } else {
+                    showStatus(result.message || "Error submitting reprint request", "error");
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    const newProdId = 'P' + (Math.floor(Math.random() * 900) + 100);
+                    showStatus(`Reprint logged locally (webhook offline) - New ID: ${newProdId}`, "warning");
+                    console.log('Offline reprint request:', {
+                        originalId: currentItem.productionId,
+                        newId: newProdId,
+                        defectType: selectedDefectType,
+                        severity: selectedSeverity
+                    });
+                    resetFormComplete();
+                } else {
+                    showStatus(`Submission error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function resetForm() {
+            selectedDefectType = null;
+            selectedSeverity = null;
+            uploadedPhotos = [];
+            
+            document.querySelectorAll('.defect-category').forEach(cat => {
+                cat.classList.remove('selected');
+            });
+            document.querySelectorAll('.severity-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            document.getElementById('defect-notes').value = '';
+            document.getElementById('reprint-quantity').value = '1';
+            document.getElementById('defect-photos').value = '';
+            document.getElementById('photo-grid').innerHTML = '';
+            document.querySelector('.reprint-actions').style.display = 'none';
+        }
+        
+        function resetFormComplete() {
+            setTimeout(() => {
+                document.getElementById('item-search').value = '';
+                hideItemDetails();
+                showStatus("Ready for next reprint request", "success");
+            }, 3000);
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status status-${type} show`;
+            statusDiv.textContent = message;
+            
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Photo handling
+        document.getElementById('defect-photos').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            
+            files.forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const photoData = e.target.result;
+                        uploadedPhotos.push(photoData);
+                        
+                        const photoGrid = document.getElementById('photo-grid');
+                        const photoItem = document.createElement('div');
+                        photoItem.className = 'photo-item';
+                        photoItem.innerHTML = `
+                            <img src="${photoData}" class="photo-preview" alt="Defect photo">
+                            <button class="photo-remove" onclick="removePhoto(${uploadedPhotos.length - 1})">&times;</button>
+                        `;
+                        photoGrid.appendChild(photoItem);
+                        
+                        checkFormComplete();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+        
+        function removePhoto(index) {
+            uploadedPhotos.splice(index, 1);
+            
+            // Rebuild photo grid
+            const photoGrid = document.getElementById('photo-grid');
+            photoGrid.innerHTML = '';
+            
+            uploadedPhotos.forEach((photoData, i) => {
+                const photoItem = document.createElement('div');
+                photoItem.className = 'photo-item';
+                photoItem.innerHTML = `
+                    <img src="${photoData}" class="photo-preview" alt="Defect photo">
+                    <button class="photo-remove" onclick="removePhoto(${i})">&times;</button>
+                `;
+                photoGrid.appendChild(photoItem);
+            });
+            
+            checkFormComplete();
+        }
+        
+        // Notes input monitoring
+        document.getElementById('defect-notes').addEventListener('input', checkFormComplete);
+        
+        // Enter key support for search
+        document.getElementById('item-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchItem();
+            }
+        });
+    </script>
+</body>
+</html>

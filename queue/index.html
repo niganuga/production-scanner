@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Monitor - Production Apps</title>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../config.js"></script>
+    <style>
+        .queue-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .queue-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .facility-tabs {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .facility-tab {
+            padding: 10px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            font-weight: 500;
+        }
+        
+        .facility-tab.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .queue-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .queue-list {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        
+        .queue-header {
+            background: var(--light-color);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 60px 1fr 120px 120px 80px 100px;
+            gap: 15px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .queue-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 60px 1fr 120px 120px 80px 100px;
+            gap: 15px;
+            align-items: center;
+            cursor: grab;
+            transition: all 0.3s ease;
+        }
+        
+        .queue-item:hover {
+            background: var(--light-color);
+        }
+        
+        .queue-item.dragging {
+            opacity: 0.5;
+            background: var(--warning-bg);
+        }
+        
+        .queue-item.drag-over {
+            border-top: 3px solid var(--primary-color);
+        }
+        
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+        
+        .position-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .batch-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .batch-name {
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .batch-details {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .priority-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .priority-high {
+            background: var(--error-bg);
+            color: var(--error-text);
+        }
+        
+        .priority-medium {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+        
+        .priority-low {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .status-waiting {
+            background: var(--border-color);
+            color: #666;
+        }
+        
+        .status-ready {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .status-printing {
+            background: var(--info-bg);
+            color: var(--info-text);
+        }
+        
+        .estimated-time {
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        .batch-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .action-btn {
+            padding: 5px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-priority {
+            background: var(--warning-color);
+            color: var(--dark-color);
+        }
+        
+        .btn-start {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-hold {
+            background: var(--error-color);
+            color: white;
+        }
+        
+        .empty-queue {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .refresh-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .drag-handle {
+            cursor: grab;
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+        
+        .drag-handle:hover {
+            color: var(--primary-color);
+        }
+        
+        @media (max-width: 768px) {
+            .queue-header,
+            .queue-item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .queue-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .facility-tabs {
+                justify-content: center;
+            }
+            
+            .queue-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-brand">Production Apps</a>
+            <div class="nav-links">
+                <a href="../index.html" class="nav-link">Dashboard</a>
+                <a href="index.html" class="nav-link active">Queue</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="app-container queue-container">
+            <h1>📋 Production Queue Monitor</h1>
+            
+            <div class="queue-controls">
+                <div class="facility-tabs">
+                    <div class="facility-tab active" onclick="switchFacility('CHICO')">CHICO</div>
+                    <div class="facility-tab" onclick="switchFacility('OUTPOST')">OUTPOST</div>
+                    <div class="facility-tab" onclick="switchFacility('ALL')">ALL FACILITIES</div>
+                </div>
+                
+                <div class="refresh-controls">
+                    <button class="btn btn-secondary btn-small" onclick="refreshQueue()">🔄 Refresh</button>
+                    <div class="auto-refresh">
+                        <input type="checkbox" id="auto-refresh" checked>
+                        <label for="auto-refresh">Auto-refresh (30s)</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="queue-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-batches">0</div>
+                    <div class="stat-label">Total Batches</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="high-priority">0</div>
+                    <div class="stat-label">High Priority</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="in-progress">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avg-wait-time">-</div>
+                    <div class="stat-label">Avg Wait Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="est-completion">-</div>
+                    <div class="stat-label">Est. Completion</div>
+                </div>
+            </div>
+            
+            <div class="queue-list">
+                <div class="queue-header">
+                    <div>#</div>
+                    <div>Batch Details</div>
+                    <div>Priority</div>
+                    <div>Status</div>
+                    <div>Est. Time</div>
+                    <div>Actions</div>
+                </div>
+                
+                <div id="queue-items">
+                    <!-- Queue items will be populated here -->
+                </div>
+                
+                <div id="empty-queue" class="empty-queue" style="display: none;">
+                    <h3>📭 Queue is Empty</h3>
+                    <p>No batches in the production queue for this facility.</p>
+                    <button class="btn btn-primary" onclick="refreshQueue()">Refresh Queue</button>
+                </div>
+            </div>
+            
+            <div id="status-message" class="status"></div>
+            
+            <div class="info-box">
+                <h3>📖 Queue Management Guide</h3>
+                <ul>
+                    <li><strong>Drag & Drop:</strong> Reorder batches by dragging position numbers</li>
+                    <li><strong>Priority Levels:</strong> High (rush orders) → Medium (standard) → Low (bulk)</li>
+                    <li><strong>Status Indicators:</strong> Waiting → Ready → Printing → Complete</li>
+                    <li><strong>Time Estimates:</strong> Based on item quantity and historical data</li>
+                    <li><strong>Actions:</strong> Start production, adjust priority, or place on hold</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFacility = 'CHICO';
+        let queueData = [];
+        let autoRefreshInterval = null;
+        let draggedItem = null;
+        
+        async function loadQueue() {
+            showStatus("Loading queue data...", "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('QUEUE'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        facility: currentFacility,
+                        includeStats: true
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    queueData = result.queue || [];
+                    updateQueueDisplay();
+                    updateStats(result.stats);
+                    showStatus("Queue updated", "success");
+                } else {
+                    showStatus(result.message || "Error loading queue", "error");
+                    loadSampleQueue();
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    loadSampleQueue();
+                    showStatus("Demo mode: Using sample queue data (webhook offline)", "warning");
+                } else {
+                    showStatus(`Load error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function loadSampleQueue() {
+            const now = new Date();
+            queueData = [
+                {
+                    id: 'B001',
+                    batchName: 'BATCH-001',
+                    orderIds: ['TS-1234', 'TS-1235'],
+                    itemCount: 12,
+                    priority: 'high',
+                    status: 'ready',
+                    estimatedTime: '45 min',
+                    facility: 'CHICO',
+                    printer: 'C2',
+                    queuePosition: 1,
+                    createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString()
+                },
+                {
+                    id: 'B002',
+                    batchName: 'BATCH-002',
+                    orderIds: ['TS-1236'],
+                    itemCount: 5,
+                    priority: 'medium',
+                    status: 'printing',
+                    estimatedTime: '25 min',
+                    facility: 'CHICO',
+                    printer: 'C2',
+                    queuePosition: 2,
+                    createdAt: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString()
+                },
+                {
+                    id: 'B003',
+                    batchName: 'BATCH-003',
+                    orderIds: ['TS-1237', 'TS-1238', 'TS-1239'],
+                    itemCount: 18,
+                    priority: 'medium',
+                    status: 'waiting',
+                    estimatedTime: '1.2 hrs',
+                    facility: 'CHICO',
+                    printer: null,
+                    queuePosition: 3,
+                    createdAt: new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString()
+                },
+                {
+                    id: 'B004',
+                    batchName: 'BATCH-004',
+                    orderIds: ['TS-1240'],
+                    itemCount: 3,
+                    priority: 'low',
+                    status: 'waiting',
+                    estimatedTime: '15 min',
+                    facility: 'CHICO',
+                    printer: null,
+                    queuePosition: 4,
+                    createdAt: new Date(now.getTime() - 30 * 60 * 1000).toISOString()
+                }
+            ];
+            
+            if (currentFacility !== 'ALL') {
+                queueData = queueData.filter(item => item.facility === currentFacility);
+            }
+            
+            updateQueueDisplay();
+            updateSampleStats();
+        }
+        
+        function updateQueueDisplay() {
+            const queueContainer = document.getElementById('queue-items');
+            const emptyQueue = document.getElementById('empty-queue');
+            
+            if (queueData.length === 0) {
+                queueContainer.innerHTML = '';
+                emptyQueue.style.display = 'block';
+                return;
+            }
+            
+            emptyQueue.style.display = 'none';
+            queueContainer.innerHTML = '';
+            
+            // Sort by queue position
+            const sortedQueue = [...queueData].sort((a, b) => a.queuePosition - b.queuePosition);
+            
+            sortedQueue.forEach((batch, index) => {
+                const queueItem = document.createElement('div');
+                queueItem.className = 'queue-item';
+                queueItem.draggable = true;
+                queueItem.dataset.batchId = batch.id;
+                
+                queueItem.innerHTML = `
+                    <div class="position-number">${index + 1}</div>
+                    <div class="batch-info">
+                        <div class="batch-name">${batch.batchName}</div>
+                        <div class="batch-details">
+                            ${batch.itemCount} items • Orders: ${batch.orderIds.join(', ')}
+                            ${batch.printer ? `• Printer: ${batch.printer}` : ''}
+                        </div>
+                    </div>
+                    <div class="priority-badge priority-${batch.priority}">${batch.priority.toUpperCase()}</div>
+                    <div class="status-badge status-${batch.status}">${batch.status.toUpperCase()}</div>
+                    <div class="estimated-time">${batch.estimatedTime}</div>
+                    <div class="batch-actions">
+                        ${batch.status === 'waiting' ? `<button class="action-btn btn-start" onclick="startBatch('${batch.id}')">▶</button>` : ''}
+                        <button class="action-btn btn-priority" onclick="adjustPriority('${batch.id}')">⚠</button>
+                        <button class="action-btn btn-hold" onclick="holdBatch('${batch.id}')">⏸</button>
+                    </div>
+                `;
+                
+                // Add drag and drop event listeners
+                queueItem.addEventListener('dragstart', handleDragStart);
+                queueItem.addEventListener('dragover', handleDragOver);
+                queueItem.addEventListener('drop', handleDrop);
+                queueItem.addEventListener('dragend', handleDragEnd);
+                
+                queueContainer.appendChild(queueItem);
+            });
+        }
+        
+        function updateStats(stats) {
+            if (!stats) return;
+            
+            document.getElementById('total-batches').textContent = stats.totalBatches || 0;
+            document.getElementById('high-priority').textContent = stats.highPriorityCount || 0;
+            document.getElementById('in-progress').textContent = stats.inProgressCount || 0;
+            document.getElementById('avg-wait-time').textContent = stats.avgWaitTime || '-';
+            document.getElementById('est-completion').textContent = stats.estimatedCompletion || '-';
+        }
+        
+        function updateSampleStats() {
+            const stats = {
+                totalBatches: queueData.length,
+                highPriorityCount: queueData.filter(b => b.priority === 'high').length,
+                inProgressCount: queueData.filter(b => b.status === 'printing').length,
+                avgWaitTime: '2.3 hrs',
+                estimatedCompletion: '6:30 PM'
+            };
+            
+            updateStats(stats);
+        }
+        
+        function switchFacility(facility) {
+            currentFacility = facility;
+            
+            // Update UI
+            document.querySelectorAll('.facility-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            loadQueue();
+        }
+        
+        function refreshQueue() {
+            loadQueue();
+        }
+        
+        async function startBatch(batchId) {
+            const batch = queueData.find(b => b.id === batchId);
+            if (!batch) return;
+            
+            showStatus(`Starting production for ${batch.batchName}...`, "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('QUEUE'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'start',
+                        batchId: batchId,
+                        facility: currentFacility
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`${batch.batchName} started successfully!`, "success");
+                    loadQueue();
+                } else {
+                    showStatus(result.message || "Error starting batch", "error");
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    // Update locally for demo
+                    batch.status = 'printing';
+                    updateQueueDisplay();
+                    showStatus(`${batch.batchName} started (demo mode)`, "warning");
+                } else {
+                    showStatus(`Start error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        async function adjustPriority(batchId) {
+            const batch = queueData.find(b => b.id === batchId);
+            if (!batch) return;
+            
+            const priorities = ['low', 'medium', 'high'];
+            const currentIndex = priorities.indexOf(batch.priority);
+            const newPriority = priorities[(currentIndex + 1) % priorities.length];
+            
+            showStatus(`Adjusting priority for ${batch.batchName}...`, "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('PRIORITY'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'updatePriority',
+                        batchId: batchId,
+                        newPriority: newPriority,
+                        facility: currentFacility
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`Priority updated to ${newPriority}`, "success");
+                    loadQueue();
+                } else {
+                    showStatus(result.message || "Error updating priority", "error");
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    // Update locally for demo
+                    batch.priority = newPriority;
+                    updateQueueDisplay();
+                    showStatus(`Priority updated to ${newPriority} (demo mode)`, "warning");
+                } else {
+                    showStatus(`Priority error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        async function holdBatch(batchId) {
+            const batch = queueData.find(b => b.id === batchId);
+            if (!batch) return;
+            
+            const reason = prompt("Reason for hold:");
+            if (!reason) return;
+            
+            showStatus(`Placing ${batch.batchName} on hold...`, "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('QUEUE'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'hold',
+                        batchId: batchId,
+                        reason: reason,
+                        facility: currentFacility
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`${batch.batchName} placed on hold`, "warning");
+                    loadQueue();
+                } else {
+                    showStatus(result.message || "Error placing hold", "error");
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    showStatus(`${batch.batchName} hold noted locally (demo mode)`, "warning");
+                    console.log(`Hold: ${batch.batchName} - ${reason}`);
+                } else {
+                    showStatus(`Hold error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        // Drag and drop handlers
+        function handleDragStart(e) {
+            draggedItem = e.target;
+            e.target.classList.add('dragging');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.closest('.queue-item').classList.add('drag-over');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            const targetItem = e.target.closest('.queue-item');
+            if (targetItem && draggedItem && targetItem !== draggedItem) {
+                reorderQueue(draggedItem.dataset.batchId, targetItem.dataset.batchId);
+            }
+            
+            document.querySelectorAll('.queue-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+        
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedItem = null;
+        }
+        
+        async function reorderQueue(draggedBatchId, targetBatchId) {
+            showStatus("Reordering queue...", "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('QUEUE'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'reorder',
+                        draggedBatchId: draggedBatchId,
+                        targetBatchId: targetBatchId,
+                        facility: currentFacility
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus("Queue reordered successfully", "success");
+                    loadQueue();
+                } else {
+                    showStatus(result.message || "Error reordering queue", "error");
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    // Reorder locally for demo
+                    const draggedIndex = queueData.findIndex(b => b.id === draggedBatchId);
+                    const targetIndex = queueData.findIndex(b => b.id === targetBatchId);
+                    
+                    if (draggedIndex !== -1 && targetIndex !== -1) {
+                        const [draggedBatch] = queueData.splice(draggedIndex, 1);
+                        queueData.splice(targetIndex, 0, draggedBatch);
+                        
+                        // Update positions
+                        queueData.forEach((batch, index) => {
+                            batch.queuePosition = index + 1;
+                        });
+                        
+                        updateQueueDisplay();
+                        showStatus("Queue reordered (demo mode)", "warning");
+                    }
+                } else {
+                    showStatus(`Reorder error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status status-${type} show`;
+            statusDiv.textContent = message;
+            
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+        
+        function setupAutoRefresh() {
+            const checkbox = document.getElementById('auto-refresh');
+            
+            function updateAutoRefresh() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                
+                if (checkbox.checked) {
+                    autoRefreshInterval = setInterval(loadQueue, 30000); // 30 seconds
+                }
+            }
+            
+            checkbox.addEventListener('change', updateAutoRefresh);
+            updateAutoRefresh(); // Initial setup
+        }
+        
+        // Initialize
+        window.onload = function() {
+            loadQueue();
+            setupAutoRefresh();
+        };
+        
+        // Cleanup on page unload
+        window.onbeforeunload = function() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        };
+    </script>
+</body>
+</html>

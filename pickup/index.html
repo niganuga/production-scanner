@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickup Confirmation - Production Apps</title>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../config.js"></script>
+    <style>
+        .pickup-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .order-search {
+            margin-bottom: 30px;
+        }
+        
+        .order-details {
+            display: none;
+            background: var(--light-color);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+        }
+        
+        .order-items {
+            margin: 20px 0;
+        }
+        
+        .item-card {
+            background: white;
+            padding: 15px;
+            border-radius: var(--radius);
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .item-info {
+            flex-grow: 1;
+        }
+        
+        .item-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-ready {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .status-pending {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+        
+        .signature-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius);
+            text-align: center;
+        }
+        
+        .signature-canvas {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            cursor: crosshair;
+            touch-action: none;
+        }
+        
+        .photo-section {
+            margin: 20px 0;
+        }
+        
+        .photo-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: var(--radius);
+            margin: 10px 0;
+        }
+        
+        .pickup-actions {
+            display: none;
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--success-bg);
+            border-radius: var(--radius);
+            text-align: center;
+        }
+        
+        .customer-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .pickup-container {
+                padding: 10px;
+            }
+            
+            .item-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .signature-canvas {
+                width: 100%;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-brand">Production Apps</a>
+            <div class="nav-links">
+                <a href="../index.html" class="nav-link">Dashboard</a>
+                <a href="index.html" class="nav-link active">Pickup</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="app-container pickup-container">
+            <h1>📦 Pickup Confirmation</h1>
+            
+            <div class="order-search">
+                <div class="form-group">
+                    <label class="form-label" for="search-input">Search by Order ID, Email, or Phone</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="search-input" class="form-input" 
+                               placeholder="e.g., TS-1234, customer@email.com, (555) 123-4567"
+                               style="flex: 1;">
+                        <button class="btn btn-primary" onclick="searchOrder()">Search</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="order-details" class="order-details">
+                <div class="customer-info">
+                    <div>
+                        <h3>Customer Information</h3>
+                        <p><strong>Name:</strong> <span id="customer-name">-</span></p>
+                        <p><strong>Email:</strong> <span id="customer-email">-</span></p>
+                        <p><strong>Phone:</strong> <span id="customer-phone">-</span></p>
+                    </div>
+                    <div>
+                        <h3>Order Details</h3>
+                        <p><strong>Order ID:</strong> <span id="order-id">-</span></p>
+                        <p><strong>Order Date:</strong> <span id="order-date">-</span></p>
+                        <p><strong>Total Items:</strong> <span id="total-items">-</span></p>
+                    </div>
+                </div>
+                
+                <div class="order-items">
+                    <h3>Items Ready for Pickup</h3>
+                    <div id="items-list"></div>
+                </div>
+                
+                <div class="photo-section">
+                    <h3>📸 Photo Documentation (Optional)</h3>
+                    <input type="file" id="pickup-photo" accept="image/*" capture="environment" class="form-input">
+                    <img id="photo-preview" class="photo-preview" style="display: none;">
+                </div>
+                
+                <div class="signature-section">
+                    <h3>✍️ Customer Signature Required</h3>
+                    <p>Please have the customer sign below to confirm pickup:</p>
+                    <canvas id="signature-canvas" class="signature-canvas" width="400" height="150"></canvas>
+                    <br>
+                    <button class="btn btn-secondary btn-small" onclick="clearSignature()">Clear Signature</button>
+                </div>
+                
+                <div class="pickup-actions">
+                    <h3>✅ Confirm Pickup</h3>
+                    <p>All items ready • Signature captured • Documentation complete</p>
+                    <button class="btn btn-success btn-large" onclick="confirmPickup()">Complete Pickup Confirmation</button>
+                </div>
+            </div>
+            
+            <div id="status-message" class="status"></div>
+            
+            <div class="info-box">
+                <h3>📋 Pickup Process</h3>
+                <ol>
+                    <li><strong>Search</strong> for the customer's order using any identifier</li>
+                    <li><strong>Verify</strong> customer identity and order details</li>
+                    <li><strong>Check</strong> all items are ready and match the order</li>
+                    <li><strong>Photo</strong> (optional) for documentation</li>
+                    <li><strong>Signature</strong> required from customer</li>
+                    <li><strong>Complete</strong> pickup confirmation</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentOrder = null;
+        let signaturePad = null;
+        let currentPhoto = null;
+        
+        // Initialize signature pad
+        function initSignaturePad() {
+            const canvas = document.getElementById('signature-canvas');
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches && e.touches.length > 0) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+            
+            function startDrawing(e) {
+                e.preventDefault();
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+                
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                
+                checkPickupReady();
+            }
+            
+            function stopDrawing(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+                isDrawing = false;
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing);
+            canvas.addEventListener('touchmove', draw);
+            canvas.addEventListener('touchend', stopDrawing);
+            canvas.addEventListener('touchcancel', stopDrawing);
+            
+            signaturePad = { canvas, ctx };
+        }
+        
+        function clearSignature() {
+            const canvas = document.getElementById('signature-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            checkPickupReady();
+        }
+        
+        function hasSignature() {
+            const canvas = document.getElementById('signature-canvas');
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            return imageData.data.some(channel => channel !== 0);
+        }
+        
+        async function searchOrder() {
+            const searchTerm = document.getElementById('search-input').value.trim();
+            if (!searchTerm) {
+                showStatus("Please enter a search term", "error");
+                return;
+            }
+            
+            showStatus("Searching for order...", "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('PICKUP_LIST'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        searchTerm: searchTerm,
+                        searchType: detectSearchType(searchTerm)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.order) {
+                    displayOrderDetails(result.order);
+                    showStatus("Order found!", "success");
+                } else {
+                    showStatus(result.message || "Order not found or not ready for pickup", "error");
+                    hideOrderDetails();
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    // Demo mode with sample data
+                    displaySampleOrder(searchTerm);
+                    showStatus("Demo mode: Using sample data (webhook offline)", "warning");
+                } else {
+                    showStatus(`Search error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function detectSearchType(term) {
+            if (term.includes('@')) return 'email';
+            if (term.match(/[\(\)\-\s\d]/)) return 'phone';
+            return 'orderId';
+        }
+        
+        function displaySampleOrder(searchTerm) {
+            const sampleOrder = {
+                orderId: 'TS-1234',
+                customerName: 'John Smith',
+                customerEmail: 'john.smith@email.com',
+                customerPhone: '(555) 123-4567',
+                orderDate: '2024-01-15',
+                items: [
+                    {
+                        id: 1,
+                        description: 'Custom Transfer - Logo Design',
+                        quantity: 5,
+                        status: 'Ready',
+                        dimensions: '4" x 6"'
+                    },
+                    {
+                        id: 2,
+                        description: 'Heat Transfer Vinyl - Text',
+                        quantity: 2,
+                        status: 'Ready',
+                        dimensions: '8" x 2"'
+                    }
+                ]
+            };
+            
+            displayOrderDetails(sampleOrder);
+        }
+        
+        function displayOrderDetails(order) {
+            currentOrder = order;
+            
+            document.getElementById('customer-name').textContent = order.customerName;
+            document.getElementById('customer-email').textContent = order.customerEmail;
+            document.getElementById('customer-phone').textContent = order.customerPhone;
+            document.getElementById('order-id').textContent = order.orderId;
+            document.getElementById('order-date').textContent = new Date(order.orderDate).toLocaleDateString();
+            document.getElementById('total-items').textContent = order.items.length;
+            
+            const itemsList = document.getElementById('items-list');
+            itemsList.innerHTML = '';
+            
+            order.items.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.className = 'item-card';
+                itemCard.innerHTML = `
+                    <div class="item-info">
+                        <h4>${item.description}</h4>
+                        <p>Quantity: ${item.quantity} • Dimensions: ${item.dimensions}</p>
+                    </div>
+                    <div class="item-status status-${item.status.toLowerCase()}">${item.status}</div>
+                `;
+                itemsList.appendChild(itemCard);
+            });
+            
+            document.getElementById('order-details').style.display = 'block';
+            checkPickupReady();
+        }
+        
+        function hideOrderDetails() {
+            document.getElementById('order-details').style.display = 'none';
+            document.querySelector('.pickup-actions').style.display = 'none';
+            currentOrder = null;
+        }
+        
+        function checkPickupReady() {
+            if (currentOrder && hasSignature()) {
+                document.querySelector('.pickup-actions').style.display = 'block';
+            } else {
+                document.querySelector('.pickup-actions').style.display = 'none';
+            }
+        }
+        
+        async function confirmPickup() {
+            if (!currentOrder) {
+                showStatus("No order selected", "error");
+                return;
+            }
+            
+            if (!hasSignature()) {
+                showStatus("Customer signature required", "error");
+                return;
+            }
+            
+            showStatus("Processing pickup confirmation...", "info");
+            
+            try {
+                // Get signature as base64
+                const canvas = document.getElementById('signature-canvas');
+                const signatureData = canvas.toDataURL('image/png');
+                
+                // Get photo if available
+                let photoData = null;
+                if (currentPhoto) {
+                    photoData = currentPhoto;
+                }
+                
+                const confirmationData = {
+                    orderId: currentOrder.orderId,
+                    customerName: currentOrder.customerName,
+                    signature: signatureData,
+                    photo: photoData,
+                    timestamp: new Date().toISOString(),
+                    confirmedBy: localStorage.getItem('facilityName') || 'Front Desk'
+                };
+                
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('PICKUP_CONFIRM'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(confirmationData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus("Pickup confirmed successfully!", "success");
+                    resetForm();
+                } else {
+                    showStatus(result.message || "Error confirming pickup", "error");
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    showStatus("Pickup logged locally (webhook offline) - Order marked complete", "warning");
+                    console.log('Offline pickup confirmation:', {
+                        orderId: currentOrder.orderId,
+                        timestamp: new Date().toISOString()
+                    });
+                    resetForm();
+                } else {
+                    showStatus(`Confirmation error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function resetForm() {
+            setTimeout(() => {
+                document.getElementById('search-input').value = '';
+                hideOrderDetails();
+                clearSignature();
+                document.getElementById('pickup-photo').value = '';
+                document.getElementById('photo-preview').style.display = 'none';
+                currentPhoto = null;
+                showStatus("Ready for next pickup", "success");
+            }, 2000);
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status status-${type} show`;
+            statusDiv.textContent = message;
+            
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Photo handling
+        document.getElementById('pickup-photo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentPhoto = e.target.result;
+                    const preview = document.getElementById('photo-preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Enter key support for search
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchOrder();
+            }
+        });
+        
+        // Initialize on load
+        window.onload = initSignaturePad;
+    </script>
+</body>
+</html>

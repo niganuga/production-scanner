@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipping Preparation - Production Apps</title>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../config.js"></script>
+    <style>
+        .shipping-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .shipping-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .shipping-tab {
+            padding: 12px 24px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            font-weight: 500;
+        }
+        
+        .shipping-tab.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .shipping-section {
+            display: none;
+        }
+        
+        .shipping-section.active {
+            display: block;
+        }
+        
+        .ready-orders {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .orders-header {
+            background: var(--light-color);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 150px 1fr 120px 100px 120px;
+            gap: 15px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .order-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 150px 1fr 120px 100px 120px;
+            gap: 15px;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+        
+        .order-item:hover {
+            background: var(--light-color);
+        }
+        
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        
+        .order-item.selected {
+            background: var(--success-bg);
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .order-id {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .customer-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .customer-name {
+            font-weight: 500;
+        }
+        
+        .customer-details {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .shipping-method {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .method-standard {
+            background: var(--info-bg);
+            color: var(--info-text);
+        }
+        
+        .method-expedited {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+        }
+        
+        .method-rush {
+            background: var(--error-bg);
+            color: var(--error-text);
+        }
+        
+        .method-pickup {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+        
+        .item-count {
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .order-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .shipment-builder {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .selected-orders {
+            margin: 20px 0;
+        }
+        
+        .selected-order {
+            background: var(--light-color);
+            padding: 15px;
+            border-radius: var(--radius);
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .package-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .label-preview {
+            background: var(--light-color);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius);
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .tracking-display {
+            background: var(--success-bg);
+            padding: 15px;
+            border-radius: var(--radius);
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .tracking-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            font-family: monospace;
+            color: var(--success-text);
+            margin: 10px 0;
+        }
+        
+        .shipment-history {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        
+        .history-header {
+            background: var(--light-color);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+        
+        .history-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 120px 150px 1fr 100px;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .quick-action-card {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-action-card:hover {
+            border-color: var(--primary-color);
+            background: var(--light-color);
+        }
+        
+        .action-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .orders-header,
+            .order-item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .history-item {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            
+            .package-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .shipping-tabs {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-brand">Production Apps</a>
+            <div class="nav-links">
+                <a href="../index.html" class="nav-link">Dashboard</a>
+                <a href="index.html" class="nav-link active">Shipping</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="app-container shipping-container">
+            <h1>🚚 Shipping Preparation</h1>
+            
+            <div class="shipping-tabs">
+                <div class="shipping-tab active" onclick="switchTab('ready-to-ship')">Ready to Ship</div>
+                <div class="shipping-tab" onclick="switchTab('create-shipment')">Create Shipment</div>
+                <div class="shipping-tab" onclick="switchTab('tracking')">Track Shipments</div>
+            </div>
+            
+            <!-- Ready to Ship Section -->
+            <div id="ready-to-ship" class="shipping-section active">
+                <div class="quick-actions">
+                    <div class="quick-action-card" onclick="refreshReadyOrders()">
+                        <span class="action-icon">🔄</span>
+                        <h4>Refresh Orders</h4>
+                        <p>Load latest ready orders</p>
+                    </div>
+                    <div class="quick-action-card" onclick="bulkPrint()">
+                        <span class="action-icon">🖨️</span>
+                        <h4>Bulk Print Labels</h4>
+                        <p>Print multiple shipping labels</p>
+                    </div>
+                    <div class="quick-action-card" onclick="exportManifest()">
+                        <span class="action-icon">📋</span>
+                        <h4>Export Manifest</h4>
+                        <p>Download shipping manifest</p>
+                    </div>
+                </div>
+                
+                <div class="ready-orders">
+                    <div class="orders-header">
+                        <div>Order ID</div>
+                        <div>Customer</div>
+                        <div>Shipping Method</div>
+                        <div>Items</div>
+                        <div>Actions</div>
+                    </div>
+                    
+                    <div id="ready-orders-list">
+                        <!-- Orders will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Shipment Section -->
+            <div id="create-shipment" class="shipping-section">
+                <div class="shipment-builder">
+                    <h3>📦 Build New Shipment</h3>
+                    
+                    <div class="selected-orders">
+                        <h4>Selected Orders</h4>
+                        <div id="selected-orders-list">
+                            <p>No orders selected. Select orders from the "Ready to Ship" tab.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="package-details">
+                        <div class="form-group">
+                            <label class="form-label" for="package-weight">Package Weight (lbs)</label>
+                            <input type="number" id="package-weight" class="form-input" step="0.1" placeholder="1.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="package-length">Length (inches)</label>
+                            <input type="number" id="package-length" class="form-input" placeholder="12">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="package-width">Width (inches)</label>
+                            <input type="number" id="package-width" class="form-input" placeholder="9">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="package-height">Height (inches)</label>
+                            <input type="number" id="package-height" class="form-input" placeholder="3">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="carrier-service">Carrier & Service</label>
+                        <select id="carrier-service" class="form-select">
+                            <option value="">Select shipping service...</option>
+                            <option value="usps-ground">USPS Ground Advantage</option>
+                            <option value="usps-priority">USPS Priority Mail</option>
+                            <option value="usps-express">USPS Priority Express</option>
+                            <option value="fedex-ground">FedEx Ground</option>
+                            <option value="fedex-2day">FedEx 2Day</option>
+                            <option value="fedex-overnight">FedEx Overnight</option>
+                            <option value="ups-ground">UPS Ground</option>
+                            <option value="ups-3day">UPS 3 Day Select</option>
+                            <option value="ups-2day">UPS 2nd Day Air</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="special-instructions">Special Instructions</label>
+                        <textarea id="special-instructions" class="form-input" rows="3" 
+                                  placeholder="Signature required, fragile, etc."></textarea>
+                    </div>
+                    
+                    <div class="label-preview">
+                        <h4>📄 Shipping Label Preview</h4>
+                        <p>Complete package details to generate shipping label</p>
+                        <button class="btn btn-primary" onclick="createShippingLabel()" disabled id="create-label-btn">
+                            Create Shipping Label
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tracking Section -->
+            <div id="tracking" class="shipping-section">
+                <div class="form-group">
+                    <label class="form-label" for="tracking-search">Track Shipment</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="tracking-search" class="form-input" 
+                               placeholder="Enter tracking number or order ID" style="flex: 1;">
+                        <button class="btn btn-primary" onclick="trackShipment()">Track</button>
+                    </div>
+                </div>
+                
+                <div id="tracking-results" style="display: none;">
+                    <div class="tracking-display">
+                        <h3>📍 Shipment Status</h3>
+                        <div class="tracking-number" id="tracking-number">1Z999AA1234567890</div>
+                        <p><strong>Status:</strong> <span id="tracking-status">In Transit</span></p>
+                        <p><strong>Expected Delivery:</strong> <span id="expected-delivery">Tomorrow by 8:00 PM</span></p>
+                        <p><strong>Last Update:</strong> <span id="last-update">Today, 2:30 PM - Departed facility</span></p>
+                    </div>
+                </div>
+                
+                <div class="shipment-history">
+                    <div class="history-header">Recent Shipments</div>
+                    <div id="shipment-history-list">
+                        <!-- History will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div id="status-message" class="status"></div>
+            
+            <div class="info-box">
+                <h3>📦 Shipping Workflow</h3>
+                <ol>
+                    <li><strong>Check Ready Orders:</strong> Orders marked complete in production</li>
+                    <li><strong>Verify Items:</strong> Ensure all items are present and correct</li>
+                    <li><strong>Package Items:</strong> Use appropriate packaging materials</li>
+                    <li><strong>Weigh & Measure:</strong> Get accurate package dimensions</li>
+                    <li><strong>Create Label:</strong> Generate shipping label with carrier</li>
+                    <li><strong>Dispatch:</strong> Hand off to carrier or schedule pickup</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedOrders = [];
+        let readyOrders = [];
+        let shipmentHistory = [];
+        
+        async function loadReadyOrders() {
+            showStatus("Loading ready orders...", "info");
+            
+            try {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('SHIPPING'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'getReadyOrders',
+                        facility: localStorage.getItem('facilityName') || 'ALL'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    readyOrders = result.orders || [];
+                    displayReadyOrders();
+                    showStatus("Orders loaded", "success");
+                } else {
+                    showStatus(result.message || "Error loading orders", "error");
+                    loadSampleOrders();
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    loadSampleOrders();
+                    showStatus("Demo mode: Using sample orders (webhook offline)", "warning");
+                } else {
+                    showStatus(`Load error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function loadSampleOrders() {
+            readyOrders = [
+                {
+                    orderId: 'TS-1234',
+                    customerName: 'John Smith',
+                    customerEmail: 'john@email.com',
+                    shippingAddress: '123 Main St, Anytown, CA 90210',
+                    shippingMethod: 'standard',
+                    itemCount: 2,
+                    weight: 0.8,
+                    readyDate: new Date().toISOString()
+                },
+                {
+                    orderId: 'TS-1235',
+                    customerName: 'Sarah Johnson',
+                    customerEmail: 'sarah@email.com',
+                    shippingAddress: '456 Oak Ave, Somewhere, NY 10001',
+                    shippingMethod: 'expedited',
+                    itemCount: 1,
+                    weight: 0.3,
+                    readyDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+                },
+                {
+                    orderId: 'TS-1236',
+                    customerName: 'Mike Wilson',
+                    customerEmail: 'mike@email.com',
+                    shippingAddress: '789 Pine St, Elsewhere, TX 75001',
+                    shippingMethod: 'rush',
+                    itemCount: 5,
+                    weight: 2.1,
+                    readyDate: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+                }
+            ];
+            
+            displayReadyOrders();
+        }
+        
+        function displayReadyOrders() {
+            const ordersList = document.getElementById('ready-orders-list');
+            ordersList.innerHTML = '';
+            
+            if (readyOrders.length === 0) {
+                ordersList.innerHTML = '<div style="padding: 40px; text-align: center; color: #666;">No orders ready for shipping</div>';
+                return;
+            }
+            
+            readyOrders.forEach(order => {
+                const orderItem = document.createElement('div');
+                orderItem.className = 'order-item';
+                orderItem.dataset.orderId = order.orderId;
+                
+                if (selectedOrders.some(o => o.orderId === order.orderId)) {
+                    orderItem.classList.add('selected');
+                }
+                
+                orderItem.innerHTML = `
+                    <div class="order-id">${order.orderId}</div>
+                    <div class="customer-info">
+                        <div class="customer-name">${order.customerName}</div>
+                        <div class="customer-details">${order.shippingAddress}</div>
+                    </div>
+                    <div class="shipping-method method-${order.shippingMethod}">${order.shippingMethod.toUpperCase()}</div>
+                    <div class="item-count">${order.itemCount}</div>
+                    <div class="order-actions">
+                        <button class="btn btn-small btn-primary" onclick="selectOrder('${order.orderId}')">
+                            ${selectedOrders.some(o => o.orderId === order.orderId) ? 'Selected' : 'Select'}
+                        </button>
+                        <button class="btn btn-small btn-secondary" onclick="viewOrderDetails('${order.orderId}')">View</button>
+                    </div>
+                `;
+                
+                ordersList.appendChild(orderItem);
+            });
+        }
+        
+        function selectOrder(orderId) {
+            const order = readyOrders.find(o => o.orderId === orderId);
+            if (!order) return;
+            
+            const existingIndex = selectedOrders.findIndex(o => o.orderId === orderId);
+            
+            if (existingIndex !== -1) {
+                selectedOrders.splice(existingIndex, 1);
+                showStatus(`${orderId} removed from shipment`, "info");
+            } else {
+                selectedOrders.push(order);
+                showStatus(`${orderId} added to shipment`, "success");
+            }
+            
+            displayReadyOrders();
+            updateSelectedOrders();
+        }
+        
+        function updateSelectedOrders() {
+            const selectedList = document.getElementById('selected-orders-list');
+            
+            if (selectedOrders.length === 0) {
+                selectedList.innerHTML = '<p>No orders selected. Select orders from the "Ready to Ship" tab.</p>';
+                document.getElementById('create-label-btn').disabled = true;
+                return;
+            }
+            
+            selectedList.innerHTML = '';
+            let totalWeight = 0;
+            
+            selectedOrders.forEach(order => {
+                totalWeight += order.weight || 0;
+                
+                const selectedOrder = document.createElement('div');
+                selectedOrder.className = 'selected-order';
+                selectedOrder.innerHTML = `
+                    <div>
+                        <strong>${order.orderId}</strong> - ${order.customerName}
+                        <br><small>${order.itemCount} items • ${order.weight || 0} lbs</small>
+                    </div>
+                    <button class="btn btn-small btn-danger" onclick="selectOrder('${order.orderId}')">Remove</button>
+                `;
+                selectedList.appendChild(selectedOrder);
+            });
+            
+            document.getElementById('package-weight').value = totalWeight.toFixed(1);
+            updateCreateLabelButton();
+        }
+        
+        function updateCreateLabelButton() {
+            const hasOrders = selectedOrders.length > 0;
+            const hasWeight = document.getElementById('package-weight').value;
+            const hasCarrier = document.getElementById('carrier-service').value;
+            
+            document.getElementById('create-label-btn').disabled = !(hasOrders && hasWeight && hasCarrier);
+        }
+        
+        async function createShippingLabel() {
+            if (selectedOrders.length === 0) {
+                showStatus("No orders selected", "error");
+                return;
+            }
+            
+            const weight = document.getElementById('package-weight').value;
+            const carrier = document.getElementById('carrier-service').value;
+            
+            if (!weight || !carrier) {
+                showStatus("Please complete required fields", "error");
+                return;
+            }
+            
+            showStatus("Creating shipping label...", "info");
+            
+            try {
+                const labelData = {
+                    orders: selectedOrders.map(o => o.orderId),
+                    packageDetails: {
+                        weight: parseFloat(weight)
+                    },
+                    carrier: carrier,
+                    createdBy: localStorage.getItem('facilityName') || 'Shipping Dept'
+                };
+                
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('SHIPPING'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'createLabel',
+                        ...labelData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`Shipping label created! Tracking: ${result.trackingNumber}`, "success");
+                    clearForm();
+                } else {
+                    showStatus(result.message || "Error creating label", "error");
+                }
+            } catch (error) {
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    const trackingNumber = '1Z999AA' + Math.floor(Math.random() * 1000000000);
+                    showStatus(`Label created (demo): ${trackingNumber}`, "warning");
+                    clearForm();
+                } else {
+                    showStatus(`Label error: ${error.message}`, "error");
+                }
+            }
+        }
+        
+        function clearForm() {
+            selectedOrders = [];
+            updateSelectedOrders();
+            document.getElementById('package-weight').value = '';
+            document.getElementById('carrier-service').value = '';
+            document.getElementById('special-instructions').value = '';
+            updateCreateLabelButton();
+        }
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.shipping-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.shipping-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            
+            if (tabName === 'ready-to-ship') {
+                loadReadyOrders();
+            }
+        }
+        
+        function refreshReadyOrders() {
+            loadReadyOrders();
+        }
+        
+        function bulkPrint() {
+            showStatus("Bulk print feature coming soon", "info");
+        }
+        
+        function exportManifest() {
+            showStatus("Export manifest feature coming soon", "info");
+        }
+        
+        function viewOrderDetails(orderId) {
+            const order = readyOrders.find(o => o.orderId === orderId);
+            if (!order) return;
+            
+            alert(`Order: ${order.orderId}\nCustomer: ${order.customerName}\nItems: ${order.itemCount}\nWeight: ${order.weight} lbs`);
+        }
+        
+        function trackShipment() {
+            showStatus("Tracking feature coming soon", "info");
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status status-${type} show`;
+            statusDiv.textContent = message;
+            
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+        
+        document.getElementById('package-weight').addEventListener('input', updateCreateLabelButton);
+        document.getElementById('carrier-service').addEventListener('change', updateCreateLabelButton);
+        
+        window.onload = function() {
+            loadReadyOrders();
+        };
+    </script>
+</body>
+</html>
