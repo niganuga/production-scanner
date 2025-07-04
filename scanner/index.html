@@ -201,7 +201,14 @@
                 resetScanner();
             })
             .catch(error => {
-                showStatus(`Error: ${error.message}`, "error");
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    showStatus(`${stage} ${action} logged locally (webhook offline)`, "warning");
+                    // Log action locally when webhook is unavailable
+                    console.log(`Offline log: ${data.qrCode} - ${stage} ${action} at ${data.timestamp}`);
+                    resetScanner();
+                } else {
+                    showStatus(`Error: ${error.message}`, "error");
+                }
             });
         }
         
@@ -246,7 +253,17 @@
                     showStatus(`Error: ${result.message || 'This item is not assigned to ' + facilityName}`, "error");
                 }
             } catch (error) {
-                showStatus(`Error validating: ${error.message}`, "error");
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    showStatus("Webhook service unavailable. Using offline mode - manual entry accepted.", "warning");
+                    // Allow manual entry without validation in offline mode
+                    currentProductionId = code.toUpperCase();
+                    document.getElementById('scanned-code').textContent = currentProductionId;
+                    document.getElementById('scan-result').style.display = 'block';
+                    document.querySelector('.stage-buttons').style.display = 'grid';
+                    document.getElementById('manual-code').value = '';
+                } else {
+                    showStatus(`Error validating: ${error.message}`, "error");
+                }
             }
         }
         

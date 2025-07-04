@@ -1,8 +1,8 @@
 const CONFIG = {
     N8N_BASE: 'https://kureiji.app.n8n.cloud',
     WEBHOOKS: {
-        SCAN: '/webhook-test/production-stage-scan',
-        VALIDATE: '/webhook-test/batch-facility-validation',
+        SCAN: '/webhook/production-stage-scan',
+        VALIDATE: '/webhook/batch-facility-validation',
         STATUS: '/webhook/get-order-status',
         PICKUP_LIST: '/webhook/get-pickup-ready',
         PICKUP_CONFIRM: '/webhook/confirm-pickup',
