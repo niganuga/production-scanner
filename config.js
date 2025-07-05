@@ -10,7 +10,8 @@ const CONFIG = {
         QUEUE: '/webhook/get-queue-status',
         SHIPPING: '/webhook/get-shipping-queue',
         METRICS: '/webhook/get-production-metrics',
-        PRIORITY: '/webhook/update-priority'
+        PRIORITY: '/webhook/update-priority',
+        DASHBOARD_STATS: '/webhook/dashboard-stats'
     },
     FACILITIES: ['CHICO', 'OUTPOST'],
     PRINTERS: {

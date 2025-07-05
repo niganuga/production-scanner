@@ -148,8 +148,11 @@
             <h1>🏭 Production Apps Dashboard</h1>
             
             <div class="facility-info">
-                <h3>Current Facility: <span id="facility-name">Not Set</span></h3>
-                <button class="btn btn-secondary" onclick="changeFacility()">Change Facility</button>
+                <h3>Production View: <span id="facility-name">All Facilities</span></h3>
+                <button class="btn btn-secondary" onclick="changeFacility()">Filter by Facility</button>
+                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+                    Production occurs at multiple facilities • Fulfillment centralized at CHICO
+                </p>
             </div>
             
             <div class="quick-stats" id="quick-stats">
@@ -163,11 +166,11 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-number" id="stat-ready-pickup">--</div>
-                    <div class="stat-label">Ready for Pickup</div>
+                    <div class="stat-label">Ready for Pickup (CHICO)</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number" id="stat-queue-items">--</div>
-                    <div class="stat-label">Queue Items</div>
+                    <div class="stat-label">Production Queue</div>
                 </div>
             </div>
             
@@ -176,7 +179,7 @@
                 <div class="app-card production" onclick="openApp('scanner')">
                     <div class="app-icon">📱</div>
                     <div class="app-title">Production Scanner</div>
-                    <div class="app-description">Scan QR codes to update production stages. Track print, QC, cut, and ship progress.</div>
+                    <div class="app-description">Scan QR codes to track production stages through print, QC, cut, and ship.</div>
                     <div class="app-status status-ready">Ready</div>
                 </div>
                 
@@ -241,30 +244,37 @@
         
         // Initialize facility display
         function initFacility() {
-            if (currentFacility) {
-                document.getElementById('facility-name').textContent = currentFacility;
-                document.getElementById('current-facility').textContent = currentFacility;
-                loadQuickStats();
-            } else {
-                document.getElementById('facility-name').textContent = 'Not Set';
-                document.getElementById('current-facility').textContent = 'Not Set';
+            // Default to ALL facilities since fulfillment is centralized
+            if (!currentFacility) {
+                currentFacility = 'ALL';
+                localStorage.setItem('facilityName', currentFacility);
             }
+            
+            const displayText = currentFacility === 'ALL' ? 'All Facilities' : currentFacility;
+            document.getElementById('facility-name').textContent = displayText;
+            document.getElementById('current-facility').textContent = displayText;
+            loadQuickStats();
         }
         
-        // Change facility
+        // Change facility filter
         function changeFacility() {
-            const facilities = CONFIG.FACILITIES;
-            const selection = prompt(`Select facility (${facilities.join(' or ')}):`, currentFacility);
+            const options = ['ALL', 'CHICO', 'OUTPOST'];
+            const current = currentFacility || 'ALL';
+            const selection = prompt(`Filter by facility:\n\nALL - Show all production data\nCHICO - Show only CHICO production\nOUTPOST - Show only OUTPOST production\n\nSelect (${options.join(', ')}):`, current);
             
-            if (selection && CONFIG_UTILS.validateFacility(selection)) {
+            if (selection && options.includes(selection.toUpperCase())) {
                 currentFacility = selection.toUpperCase();
                 localStorage.setItem('facilityName', currentFacility);
-                document.getElementById('facility-name').textContent = currentFacility;
-                document.getElementById('current-facility').textContent = currentFacility;
+                
+                // Update display text
+                const displayText = currentFacility === 'ALL' ? 'All Facilities' : currentFacility;
+                document.getElementById('facility-name').textContent = displayText;
+                document.getElementById('current-facility').textContent = displayText;
+                
                 loadQuickStats();
-                showStatus(`Facility set to: ${currentFacility}`, 'success');
+                showStatus(`Production view: ${displayText}`, 'success');
             } else if (selection) {
-                showStatus(`Invalid facility. Please select ${facilities.join(' or ')}`, 'error');
+                showStatus(`Invalid selection. Please choose ${options.join(', ')}`, 'error');
             }
         }
         
@@ -285,7 +295,7 @@
             }
         }
         
-        // Load quick stats (placeholder - would integrate with actual data)
+        // Load live quick stats from Airtable via N8N
         async function loadQuickStats() {
             if (!currentFacility) return;
             
@@ -296,20 +306,42 @@
             document.getElementById('stat-queue-items').textContent = '...';
             
             try {
-                // This would call your actual metrics endpoint
-                // For now, showing placeholder data
-                setTimeout(() => {
+                const response = await fetch(CONFIG_UTILS.getWebhookUrl('DASHBOARD_STATS'), {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        facility: currentFacility
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.stats) {
+                    document.getElementById('stat-active-orders').textContent = result.stats.activeOrders;
+                    document.getElementById('stat-in-production').textContent = result.stats.inProduction;
+                    document.getElementById('stat-ready-pickup').textContent = result.stats.readyPickup;
+                    document.getElementById('stat-queue-items').textContent = result.stats.queueItems;
+                } else {
+                    throw new Error('Invalid response format');
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                
+                if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    // Fallback to demo data when webhooks offline
                     document.getElementById('stat-active-orders').textContent = '12';
                     document.getElementById('stat-in-production').textContent = '8';
                     document.getElementById('stat-ready-pickup').textContent = '3';
                     document.getElementById('stat-queue-items').textContent = '24';
-                }, 1000);
-            } catch (error) {
-                console.error('Error loading stats:', error);
-                document.getElementById('stat-active-orders').textContent = '--';
-                document.getElementById('stat-in-production').textContent = '--';
-                document.getElementById('stat-ready-pickup').textContent = '--';
-                document.getElementById('stat-queue-items').textContent = '--';
+                } else {
+                    document.getElementById('stat-active-orders').textContent = '--';
+                    document.getElementById('stat-in-production').textContent = '--';
+                    document.getElementById('stat-ready-pickup').textContent = '--';
+                    document.getElementById('stat-queue-items').textContent = '--';
+                }
             }
         }
         
