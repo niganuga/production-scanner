@@ -6,6 +6,7 @@
     <title>Production Apps Dashboard</title>
     <link rel="stylesheet" href="styles.css">
     <script src="config.js"></script>
+    <script src="api-service.js"></script>
     <style>
         .dashboard-grid {
             display: grid;
@@ -370,91 +371,26 @@
             }
         }
         
-        // Load stats via direct Airtable API
+        // Load stats via unified API service
         async function loadStatsDirectAPI() {
-            console.log('Loading stats via direct Airtable API...');
+            console.log('Loading stats via unified API service...');
             
             try {
-                // Define queries based on actual Order Management schema and facility filter
-                const queries = {
-                    // Active Orders: Based on actual status values found in your Airtable
-                    activeOrders: "OR({Order Status} = 'New', {Order Status} = 'In Review', {Order Status} = 'On Hold', {Order Status} = 'Processing')",
-                    
-                    // In Production: Productions with status indicating active work (adjusted for actual values)
-                    inProduction: currentFacility === 'ALL'
-                        ? "OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting')"
-                        : `AND(OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting'), {Facility} = '${currentFacility}')`,
-                    
-                    // Ready for Pickup: Orders with Will Call fulfillment that haven't been confirmed
-                    readyPickup: "AND({Fulfillment Option} = 'Will Call', {Pickup Confirmed} = BLANK())",
-                    
-                    // Queue Items: Batches that are created or in active production
-                    queueItems: currentFacility === 'ALL'
-                        ? "OR({Batch Status} = 'Created', {Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing')"
-                        : `AND(OR({Batch Status} = 'Created', {Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing'), {Facility} = '${currentFacility}')`
-                };
-
-                const headers = {
-                    'Authorization': `Bearer ${CONFIG.AIRTABLE.API_KEY}`,
-                    'Content-Type': 'application/json'
-                };
-
-                // Debug: Let's also fetch some sample data to see actual field values
-                console.log('API Queries being executed:');
-                console.log('Active Orders:', queries.activeOrders);
-                console.log('In Production:', queries.inProduction);
-                console.log('Ready Pickup:', queries.readyPickup);
-                console.log('Queue Items:', queries.queueItems);
-
-                // Execute all queries in parallel
-                const [activeOrdersResponse, inProductionResponse, readyPickupResponse, queueItemsResponse, debugOrdersResponse, debugProductionsResponse, debugBatchesResponse] = await Promise.all([
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?filterByFormula=${encodeURIComponent(queries.activeOrders)}&fields%5B%5D=Order%20ID`, { headers }),
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Productions?filterByFormula=${encodeURIComponent(queries.inProduction)}&fields%5B%5D=Production%20ID`, { headers }),
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?filterByFormula=${encodeURIComponent(queries.readyPickup)}&fields%5B%5D=Order%20ID`, { headers }),
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Batches?filterByFormula=${encodeURIComponent(queries.queueItems)}&fields%5B%5D=Batch%20Name`, { headers }),
-                    
-                    // Debug queries to see actual data
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?maxRecords=3&fields%5B%5D=Order%20Status&fields%5B%5D=Fulfillment%20Option&fields%5B%5D=Pickup%20Confirmed`, { headers }),
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Productions?maxRecords=3&fields%5B%5D=Production%20Status&fields%5B%5D=Facility`, { headers }),
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Batches?maxRecords=3&fields%5B%5D=Batch%20Status&fields%5B%5D=Facility`, { headers })
-                ]);
-
-                // Check for errors
-                if (!activeOrdersResponse.ok || !inProductionResponse.ok || !readyPickupResponse.ok || !queueItemsResponse.ok) {
-                    throw new Error(`Airtable API error: ${activeOrdersResponse.status}`);
+                // Initialize the API service
+                const api = new OrderManagementAPI(CONFIG.AIRTABLE.API_KEY, CONFIG.AIRTABLE.BASE_ID);
+                
+                // Get dashboard stats
+                const result = await api.getDashboardStats(currentFacility);
+                
+                if (result.success) {
+                    console.log('API Service response:', result.stats);
+                    displayStats(result.stats);
+                } else {
+                    throw new Error(result.error || 'API service failed');
                 }
-
-                // Parse responses
-                const [activeOrdersData, inProductionData, readyPickupData, queueItemsData, debugOrdersData, debugProductionsData, debugBatchesData] = await Promise.all([
-                    activeOrdersResponse.json(),
-                    inProductionResponse.json(),
-                    readyPickupResponse.json(),
-                    queueItemsResponse.json(),
-                    debugOrdersResponse.json(),
-                    debugProductionsResponse.json(),
-                    debugBatchesResponse.json()
-                ]);
-
-                // Debug: Log sample data to see actual field values
-                console.log('Sample Orders data:', debugOrdersData.records);
-                console.log('Sample Productions data:', debugProductionsData.records);
-                console.log('Sample Batches data:', debugBatchesData.records);
-
-                // Count results
-                const stats = {
-                    activeOrders: activeOrdersData.records.length,
-                    inProduction: inProductionData.records.length,
-                    readyPickup: readyPickupData.records.length,
-                    queueItems: queueItemsData.records.length,
-                    lastUpdated: new Date().toISOString(),
-                    facility: currentFacility
-                };
-
-                console.log('Direct Airtable API response:', stats);
-                displayStats(stats);
                 
             } catch (error) {
-                console.error('Direct Airtable API error:', error);
+                console.error('API Service error:', error);
                 throw error; // Re-throw to trigger fallback
             }
         }
