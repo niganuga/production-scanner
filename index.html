@@ -148,10 +148,12 @@
             <h1>🏭 Production Apps Dashboard</h1>
             
             <div class="facility-info">
-                <h3>Production View: <span id="facility-name">All Facilities</span></h3>
-                <button class="btn btn-secondary" onclick="changeFacility()">Filter by Facility</button>
-                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
-                    Production occurs at multiple facilities • Fulfillment centralized at CHICO
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h3 style="margin: 0;">Production View: <span id="facility-name">All Facilities</span></h3>
+                    <button class="btn btn-secondary btn-small" onclick="changeFacility()">Filter</button>
+                </div>
+                <p style="font-size: 0.85rem; color: #666; margin: 0;">
+                    Production: Multi-facility • Fulfillment: CHICO
                 </p>
             </div>
             
