@@ -1,5 +1,10 @@
 const CONFIG = {
     N8N_BASE: 'https://kureiji.app.n8n.cloud',
+    
+    // Test mode - can be enabled via browser console or URL parameter
+    TEST_MODE: localStorage.getItem('testMode') === 'true' || 
+               new URLSearchParams(window.location.search).get('test') === 'true',
+    
     WEBHOOKS: {
         SCAN: '/webhook/production-stage-scan',
         VALIDATE: '/webhook/batch-facility-validation',
@@ -49,6 +54,47 @@ const CONFIG_UTILS = {
     validatePrinter(facility, printer) {
         const printers = this.getFacilityPrinters(facility);
         return printers.includes(printer);
+    },
+    
+    // Test mode utilities
+    isTestMode() {
+        return CONFIG.TEST_MODE;
+    },
+    
+    enableTestMode() {
+        localStorage.setItem('testMode', 'true');
+        console.log('🧪 Test mode enabled. Reload page to activate.');
+        return 'Test mode will be active after page reload';
+    },
+    
+    disableTestMode() {
+        localStorage.removeItem('testMode');
+        console.log('✅ Test mode disabled. Reload page to deactivate.');
+        return 'Test mode will be disabled after page reload';
+    },
+    
+    getTestStatus() {
+        const isTest = this.isTestMode();
+        console.log(`🔍 Test mode: ${isTest ? 'ENABLED' : 'DISABLED'}`);
+        if (isTest) {
+            console.log('📝 Webhooks will include testMode: true');
+            console.log('🔧 To disable: CONFIG_UTILS.disableTestMode()');
+        } else {
+            console.log('🔧 To enable: CONFIG_UTILS.enableTestMode()');
+        }
+        return isTest;
+    },
+    
+    addTestData(data) {
+        if (this.isTestMode()) {
+            return {
+                ...data,
+                testMode: true,
+                testPrefix: 'TEST-',
+                testTimestamp: new Date().toISOString()
+            };
+        }
+        return data;
     }
 };
 

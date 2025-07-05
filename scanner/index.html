@@ -67,6 +67,9 @@
                     <div class="info-box-title">Facility: <span id="operator-name">Not Set</span></div>
                     <button class="btn btn-small btn-secondary" onclick="changeFacility()">Change</button>
                 </div>
+                <div id="test-mode-indicator" style="display: none; background: #fff3cd; border: 1px solid #ffeaa7; padding: 8px; margin-top: 10px; border-radius: 4px; font-size: 0.9rem;">
+                    🧪 <strong>TEST MODE ACTIVE</strong> - Data will be marked as test
+                </div>
             </div>
             
             <div class="info-box" id="printer-info" style="display: none;">
@@ -119,6 +122,12 @@
             changeFacility();
         } else {
             document.getElementById('operator-name').textContent = facilityName;
+        }
+        
+        // Initialize test mode indicator
+        if (CONFIG_UTILS.isTestMode()) {
+            document.getElementById('test-mode-indicator').style.display = 'block';
+            console.log('🧪 Scanner running in TEST MODE');
         }
         
         // Initialize printer
@@ -179,14 +188,14 @@
                 return;
             }
             
-            const data = {
+            const data = CONFIG_UTILS.addTestData({
                 qrCode: currentProductionId,
                 stage: stage,
                 action: action,
                 facility: facilityName,
                 printer: currentPrinter,
                 timestamp: new Date().toISOString()
-            };
+            });
             
             // Send to webhook
             fetch(WEBHOOK_URL, {
@@ -235,10 +244,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
+                    body: JSON.stringify(CONFIG_UTILS.addTestData({
                         productionId: code.toUpperCase(),
                         facility: facilityName
-                    })
+                    }))
                 });
                 
                 const result = await response.json();
