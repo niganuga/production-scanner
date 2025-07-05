@@ -385,8 +385,8 @@
                         ? "OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting')"
                         : `AND(OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting'), {Facility} = '${currentFacility}')`,
                     
-                    // Ready for Pickup: Orders with Pickup fulfillment that haven't been confirmed
-                    readyPickup: "AND({Fulfillment Option} = 'Pickup', {Pickup Confirmed} = BLANK())",
+                    // Ready for Pickup: Orders with Will Call fulfillment that haven't been confirmed
+                    readyPickup: "AND({Fulfillment Option} = 'Will Call', {Pickup Confirmed} = BLANK())",
                     
                     // Queue Items: Batches that are created or in active production
                     queueItems: currentFacility === 'ALL'
