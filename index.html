@@ -375,20 +375,20 @@
             console.log('Loading stats via direct Airtable API...');
             
             try {
-                // Define queries based on Order Management schema and facility filter
+                // Define queries based on actual Order Management schema and facility filter
                 const queries = {
-                    activeOrders: currentFacility === 'ALL'
-                        ? "AND({Order Status} != 'Completed', {Order Status} != 'Cancelled', {Order Status} != 'Shipped')"
-                        : `AND({Order Status} != 'Completed', {Order Status} != 'Cancelled', {Order Status} != 'Shipped')`,
+                    // Active Orders: Orders that are not completed, cancelled, or shipped
+                    activeOrders: "AND({Order Status} != 'Completed', {Order Status} != 'Cancelled', {Order Status} != 'Shipped')",
                     
+                    // In Production: Productions with active status (using correct field names from schema)
                     inProduction: currentFacility === 'ALL'
-                        ? "OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting')"
-                        : `AND(OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting'), {Facility} = '${currentFacility}')`,
+                        ? "OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting', {Production Status} = 'In Progress')"
+                        : `AND(OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting', {Production Status} = 'In Progress'), {Facility} = '${currentFacility}')`,
                     
-                    readyPickup: currentFacility === 'ALL'
-                        ? "AND({Fulfillment Option} = 'Pickup', {Pickup Confirmed} = BLANK())"
-                        : `AND({Fulfillment Option} = 'Pickup', {Pickup Confirmed} = BLANK())`,
+                    // Ready for Pickup: Orders with Pickup fulfillment that haven't been confirmed
+                    readyPickup: "AND({Fulfillment Option} = 'Pickup', {Pickup Confirmed} = BLANK())",
                     
+                    // Queue Items: Batches that are queued or in production
                     queueItems: currentFacility === 'ALL'
                         ? "OR({Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing')"
                         : `AND(OR({Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing'), {Facility} = '${currentFacility}')`
@@ -399,12 +399,24 @@
                     'Content-Type': 'application/json'
                 };
 
+                // Debug: Let's also fetch some sample data to see actual field values
+                console.log('API Queries being executed:');
+                console.log('Active Orders:', queries.activeOrders);
+                console.log('In Production:', queries.inProduction);
+                console.log('Ready Pickup:', queries.readyPickup);
+                console.log('Queue Items:', queries.queueItems);
+
                 // Execute all queries in parallel
-                const [activeOrdersResponse, inProductionResponse, readyPickupResponse, queueItemsResponse] = await Promise.all([
+                const [activeOrdersResponse, inProductionResponse, readyPickupResponse, queueItemsResponse, debugOrdersResponse, debugProductionsResponse, debugBatchesResponse] = await Promise.all([
                     fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?filterByFormula=${encodeURIComponent(queries.activeOrders)}&fields%5B%5D=Order%20ID`, { headers }),
                     fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Productions?filterByFormula=${encodeURIComponent(queries.inProduction)}&fields%5B%5D=Production%20ID`, { headers }),
                     fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?filterByFormula=${encodeURIComponent(queries.readyPickup)}&fields%5B%5D=Order%20ID`, { headers }),
-                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Batches?filterByFormula=${encodeURIComponent(queries.queueItems)}&fields%5B%5D=Batch%20Name`, { headers })
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Batches?filterByFormula=${encodeURIComponent(queries.queueItems)}&fields%5B%5D=Batch%20Name`, { headers }),
+                    
+                    // Debug queries to see actual data
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?maxRecords=3&fields%5B%5D=Order%20Status&fields%5B%5D=Fulfillment%20Option&fields%5B%5D=Pickup%20Confirmed`, { headers }),
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Productions?maxRecords=3&fields%5B%5D=Production%20Status&fields%5B%5D=Facility`, { headers }),
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Batches?maxRecords=3&fields%5B%5D=Batch%20Status&fields%5B%5D=Facility`, { headers })
                 ]);
 
                 // Check for errors
@@ -413,12 +425,20 @@
                 }
 
                 // Parse responses
-                const [activeOrdersData, inProductionData, readyPickupData, queueItemsData] = await Promise.all([
+                const [activeOrdersData, inProductionData, readyPickupData, queueItemsData, debugOrdersData, debugProductionsData, debugBatchesData] = await Promise.all([
                     activeOrdersResponse.json(),
                     inProductionResponse.json(),
                     readyPickupResponse.json(),
-                    queueItemsResponse.json()
+                    queueItemsResponse.json(),
+                    debugOrdersResponse.json(),
+                    debugProductionsResponse.json(),
+                    debugBatchesResponse.json()
                 ]);
+
+                // Debug: Log sample data to see actual field values
+                console.log('Sample Orders data:', debugOrdersData.records);
+                console.log('Sample Productions data:', debugProductionsData.records);
+                console.log('Sample Batches data:', debugBatchesData.records);
 
                 // Count results
                 const stats = {
