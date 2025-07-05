@@ -377,21 +377,21 @@
             try {
                 // Define queries based on actual Order Management schema and facility filter
                 const queries = {
-                    // Active Orders: Orders that are not completed, cancelled, or shipped
-                    activeOrders: "AND({Order Status} != 'Completed', {Order Status} != 'Cancelled', {Order Status} != 'Shipped')",
+                    // Active Orders: Based on actual status values found in your Airtable
+                    activeOrders: "OR({Order Status} = 'New', {Order Status} = 'In Review', {Order Status} = 'On Hold', {Order Status} = 'Processing')",
                     
-                    // In Production: Productions with active status (using correct field names from schema)
+                    // In Production: Productions with status indicating active work (adjusted for actual values)
                     inProduction: currentFacility === 'ALL'
-                        ? "OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting', {Production Status} = 'In Progress')"
-                        : `AND(OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting', {Production Status} = 'In Progress'), {Facility} = '${currentFacility}')`,
+                        ? "OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting')"
+                        : `AND(OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting'), {Facility} = '${currentFacility}')`,
                     
                     // Ready for Pickup: Orders with Pickup fulfillment that haven't been confirmed
                     readyPickup: "AND({Fulfillment Option} = 'Pickup', {Pickup Confirmed} = BLANK())",
                     
-                    // Queue Items: Batches that are queued or in production
+                    // Queue Items: Batches that are created or in active production
                     queueItems: currentFacility === 'ALL'
-                        ? "OR({Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing')"
-                        : `AND(OR({Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing'), {Facility} = '${currentFacility}')`
+                        ? "OR({Batch Status} = 'Created', {Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing')"
+                        : `AND(OR({Batch Status} = 'Created', {Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing'), {Facility} = '${currentFacility}')`
                 };
 
                 const headers = {
