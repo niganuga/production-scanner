@@ -353,14 +353,14 @@
             } catch (error) {
                 console.error('N8N webhook error:', error);
                 
-                // Try MCP server fallback if enabled
-                if (CONFIG.MCP_SERVER.ENABLED) {
-                    console.log('Trying MCP server fallback...');
+                // Try direct Airtable API fallback if enabled
+                if (CONFIG.AIRTABLE.ENABLED) {
+                    console.log('Trying direct Airtable API fallback...');
                     try {
-                        await loadStatsMCP();
+                        await loadStatsDirectAPI();
                         return;
-                    } catch (mcpError) {
-                        console.error('MCP server also failed:', mcpError);
+                    } catch (apiError) {
+                        console.error('Direct API also failed:', apiError);
                     }
                 }
                 
@@ -370,32 +370,73 @@
             }
         }
         
-        // Load stats via MCP server
-        async function loadStatsMCP() {
-            // Note: This is a placeholder for MCP integration
-            // In a real implementation, this would use MCP client to call get_dashboard_stats
-            // For now, we'll simulate the MCP response with realistic data
+        // Load stats via direct Airtable API
+        async function loadStatsDirectAPI() {
+            console.log('Loading stats via direct Airtable API...');
             
-            console.log('Loading stats via MCP server...');
-            
-            // Simulate MCP server response format
-            const mcpResponse = {
-                success: true,
-                stats: {
-                    activeOrders: currentFacility === 'ALL' ? 15 : (currentFacility === 'CHICO' ? 9 : 6),
-                    inProduction: currentFacility === 'ALL' ? 11 : (currentFacility === 'CHICO' ? 7 : 4),
-                    readyPickup: currentFacility === 'ALL' ? 4 : (currentFacility === 'CHICO' ? 4 : 0),
-                    queueItems: currentFacility === 'ALL' ? 28 : (currentFacility === 'CHICO' ? 15 : 13),
+            try {
+                // Define queries based on Order Management schema and facility filter
+                const queries = {
+                    activeOrders: currentFacility === 'ALL'
+                        ? "AND({Order Status} != 'Completed', {Order Status} != 'Cancelled', {Order Status} != 'Shipped')"
+                        : `AND({Order Status} != 'Completed', {Order Status} != 'Cancelled', {Order Status} != 'Shipped')`,
+                    
+                    inProduction: currentFacility === 'ALL'
+                        ? "OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting')"
+                        : `AND(OR({Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting'), {Facility} = '${currentFacility}')`,
+                    
+                    readyPickup: currentFacility === 'ALL'
+                        ? "AND({Fulfillment Option} = 'Pickup', {Pickup Confirmed} = BLANK())"
+                        : `AND({Fulfillment Option} = 'Pickup', {Pickup Confirmed} = BLANK())`,
+                    
+                    queueItems: currentFacility === 'ALL'
+                        ? "OR({Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing')"
+                        : `AND(OR({Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing'), {Facility} = '${currentFacility}')`
+                };
+
+                const headers = {
+                    'Authorization': `Bearer ${CONFIG.AIRTABLE.API_KEY}`,
+                    'Content-Type': 'application/json'
+                };
+
+                // Execute all queries in parallel
+                const [activeOrdersResponse, inProductionResponse, readyPickupResponse, queueItemsResponse] = await Promise.all([
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?filterByFormula=${encodeURIComponent(queries.activeOrders)}&fields%5B%5D=Order%20ID`, { headers }),
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Productions?filterByFormula=${encodeURIComponent(queries.inProduction)}&fields%5B%5D=Production%20ID`, { headers }),
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Orders?filterByFormula=${encodeURIComponent(queries.readyPickup)}&fields%5B%5D=Order%20ID`, { headers }),
+                    fetch(`${CONFIG.AIRTABLE.BASE_URL}/${CONFIG.AIRTABLE.BASE_ID}/Batches?filterByFormula=${encodeURIComponent(queries.queueItems)}&fields%5B%5D=Batch%20Name`, { headers })
+                ]);
+
+                // Check for errors
+                if (!activeOrdersResponse.ok || !inProductionResponse.ok || !readyPickupResponse.ok || !queueItemsResponse.ok) {
+                    throw new Error(`Airtable API error: ${activeOrdersResponse.status}`);
+                }
+
+                // Parse responses
+                const [activeOrdersData, inProductionData, readyPickupData, queueItemsData] = await Promise.all([
+                    activeOrdersResponse.json(),
+                    inProductionResponse.json(),
+                    readyPickupResponse.json(),
+                    queueItemsResponse.json()
+                ]);
+
+                // Count results
+                const stats = {
+                    activeOrders: activeOrdersData.records.length,
+                    inProduction: inProductionData.records.length,
+                    readyPickup: readyPickupData.records.length,
+                    queueItems: queueItemsData.records.length,
                     lastUpdated: new Date().toISOString(),
                     facility: currentFacility
-                }
-            };
-            
-            // Small delay to simulate network call
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            console.log('MCP server response:', mcpResponse);
-            displayStats(mcpResponse.stats);
+                };
+
+                console.log('Direct Airtable API response:', stats);
+                displayStats(stats);
+                
+            } catch (error) {
+                console.error('Direct Airtable API error:', error);
+                throw error; // Re-throw to trigger fallback
+            }
         }
         
         // Display stats in the UI

@@ -1,10 +1,12 @@
 const CONFIG = {
     N8N_BASE: 'https://kureiji.app.n8n.cloud',
     
-    // MCP Server configuration
-    MCP_SERVER: {
+    // Airtable Direct API configuration
+    AIRTABLE: {
         ENABLED: true,
-        BASE_ID: 'appZdp18sltDYOs4s' // Order Management base
+        API_KEY: 'patTu4cWc9psOwz2Z.be543da2a5eb41430b07de37d23491c6d485aaeaace27ba03f0b58dc1a3b92f6',
+        BASE_ID: 'appZdp18sltDYOs4s', // Order Management base
+        BASE_URL: 'https://api.airtable.com/v0'
     },
     
     // Test mode - can be enabled via browser console or URL parameter
