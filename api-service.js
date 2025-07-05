@@ -56,11 +56,18 @@ class OrderManagementAPI {
     async getDashboardStats(facility = 'ALL') {
         try {
             const queries = {
+                // Active Orders: No facility filter needed - orders don't have facility, production does
                 activeOrders: "OR({Order Status} = 'New', {Order Status} = 'In Review', {Order Status} = 'On Hold', {Order Status} = 'Processing')",
+                
+                // In Production: Filter by facility only if not ALL
                 inProduction: facility === 'ALL' 
                     ? "OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting')"
                     : `AND(OR({Production Status} = 'Pending', {Production Status} = 'In Progress', {Production Status} = 'Printing', {Production Status} = 'Quality Check', {Production Status} = 'Cutting'), {Facility} = '${facility}')`,
+                
+                // Ready for Pickup: No facility filter needed - pickup is centralized at CHICO
                 readyPickup: "AND({Fulfillment Option} = 'Will Call', {Pickup Confirmed} = BLANK())",
+                
+                // Queue Items: Filter by facility only if not ALL  
                 queueItems: facility === 'ALL'
                     ? "OR({Batch Status} = 'Created', {Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing')"
                     : `AND(OR({Batch Status} = 'Created', {Batch Status} = 'Queued', {Batch Status} = 'In Production', {Batch Status} = 'Printing'), {Facility} = '${facility}')`

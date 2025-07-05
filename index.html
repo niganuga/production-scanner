@@ -246,12 +246,12 @@
     </div>
 
     <script>
-        let currentFacility = localStorage.getItem('facilityName') || '';
+        let currentFacility = localStorage.getItem('facilityName') || 'ALL';
         
         // Initialize facility display
         function initFacility() {
             // Default to ALL facilities since fulfillment is centralized
-            if (!currentFacility) {
+            if (!currentFacility || currentFacility === '') {
                 currentFacility = 'ALL';
                 localStorage.setItem('facilityName', currentFacility);
             }
