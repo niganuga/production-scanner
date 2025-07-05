@@ -320,31 +320,53 @@
                 });
                 
                 const result = await response.json();
+                console.log('Dashboard webhook response:', result);
                 
                 if (result.success && result.stats) {
+                    // Expected format from properly configured N8N webhook
                     document.getElementById('stat-active-orders').textContent = result.stats.activeOrders;
                     document.getElementById('stat-in-production').textContent = result.stats.inProduction;
                     document.getElementById('stat-ready-pickup').textContent = result.stats.readyPickup;
                     document.getElementById('stat-queue-items').textContent = result.stats.queueItems;
+                } else if (result.message === 'Workflow was started' || typeof result === 'string') {
+                    // N8N webhook is working but not configured properly - use demo data
+                    console.warn('N8N webhook needs configuration. Using demo data. Response:', result);
+                    loadDemoStats();
                 } else {
-                    throw new Error('Invalid response format');
+                    // Unknown response format - use demo data and log for debugging
+                    console.warn('Unexpected webhook response format:', result);
+                    loadDemoStats();
                 }
             } catch (error) {
                 console.error('Error loading stats:', error);
                 
                 if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                    // Fallback to demo data when webhooks offline
-                    document.getElementById('stat-active-orders').textContent = '12';
-                    document.getElementById('stat-in-production').textContent = '8';
-                    document.getElementById('stat-ready-pickup').textContent = '3';
-                    document.getElementById('stat-queue-items').textContent = '24';
+                    // Webhook service offline - use demo data
+                    console.log('Webhook offline - using demo data');
+                    loadDemoStats();
                 } else {
+                    // Other error - show error state
                     document.getElementById('stat-active-orders').textContent = '--';
                     document.getElementById('stat-in-production').textContent = '--';
                     document.getElementById('stat-ready-pickup').textContent = '--';
                     document.getElementById('stat-queue-items').textContent = '--';
                 }
             }
+        }
+        
+        function loadDemoStats() {
+            // Demo data based on facility filter
+            const demoStats = {
+                'ALL': { activeOrders: 12, inProduction: 8, readyPickup: 3, queueItems: 24 },
+                'CHICO': { activeOrders: 7, inProduction: 5, readyPickup: 3, queueItems: 12 },
+                'OUTPOST': { activeOrders: 5, inProduction: 3, readyPickup: 0, queueItems: 12 }
+            };
+            
+            const stats = demoStats[currentFacility] || demoStats['ALL'];
+            document.getElementById('stat-active-orders').textContent = stats.activeOrders;
+            document.getElementById('stat-in-production').textContent = stats.inProduction;
+            document.getElementById('stat-ready-pickup').textContent = stats.readyPickup;
+            document.getElementById('stat-queue-items').textContent = stats.queueItems;
         }
         
         // Show status message
