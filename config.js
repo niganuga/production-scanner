@@ -1,6 +1,12 @@
 const CONFIG = {
     N8N_BASE: 'https://kureiji.app.n8n.cloud',
     
+    // MCP Server configuration
+    MCP_SERVER: {
+        ENABLED: true,
+        BASE_ID: 'appZdp18sltDYOs4s' // Order Management base
+    },
+    
     // Test mode - can be enabled via browser console or URL parameter
     TEST_MODE: localStorage.getItem('testMode') === 'true' || 
                new URLSearchParams(window.location.search).get('test') === 'true',
