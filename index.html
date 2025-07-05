@@ -322,8 +322,16 @@
                     }))
                 });
                 
-                const result = await response.json();
-                console.log('Dashboard webhook response:', result);
+                // Check if response has content before parsing JSON
+                const responseText = await response.text();
+                console.log('Raw webhook response:', responseText);
+                
+                if (!responseText.trim()) {
+                    throw new Error('Empty response from webhook');
+                }
+                
+                const result = JSON.parse(responseText);
+                console.log('Parsed webhook response:', result);
                 
                 if (result.success && result.stats) {
                     // Expected format from properly configured N8N webhook
@@ -334,6 +342,10 @@
                 } else if (result.message === 'Workflow was started' || typeof result === 'string') {
                     // N8N webhook is working but not configured properly - use demo data
                     console.warn('N8N webhook needs configuration. Using demo data. Response:', result);
+                    loadDemoStats();
+                } else if (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html>')) {
+                    // Webhook returned HTML (likely 404 or error page)
+                    console.warn('Webhook returned HTML instead of JSON - likely not configured yet');
                     loadDemoStats();
                 } else {
                     // Unknown response format - use demo data and log for debugging
@@ -347,8 +359,13 @@
                     // Webhook service offline - use demo data
                     console.log('Webhook offline - using demo data');
                     loadDemoStats();
+                } else if (error.message.includes('JSON') || error.message.includes('Unexpected end of JSON input') || error.message.includes('Empty response')) {
+                    // JSON parsing error or empty response - webhook likely not configured
+                    console.warn('Webhook returned invalid/empty JSON - using demo data');
+                    loadDemoStats();
                 } else {
                     // Other error - show error state
+                    console.error('Unexpected error:', error);
                     document.getElementById('stat-active-orders').textContent = '--';
                     document.getElementById('stat-in-production').textContent = '--';
                     document.getElementById('stat-ready-pickup').textContent = '--';
