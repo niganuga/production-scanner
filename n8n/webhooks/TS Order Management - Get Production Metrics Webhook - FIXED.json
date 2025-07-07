@@ -1,0 +1,171 @@
+{
+  "name": "TS Order Management - Get Production Metrics Webhook - FIXED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "get-production-metrics",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "da3a5db1-64e8-420c-8a1f-ddfc0995ce28",
+      "name": "Get Production Metrics",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        -40
+      ],
+      "webhookId": "get-production-metrics-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get production metrics with correct field mappings\nconst input = $input.first().json;\nconst { dateRange = 'today', facility = 'all' } = input.body || input;\n\n// Calculate date filter\nlet dateFilter = '';\n\nswitch(dateRange) {\n  case 'today':\n    dateFilter = `IS_SAME({Created}, TODAY(), 'day')`;\n    break;\n  case 'week':\n    dateFilter = `{Created} >= DATEADD(TODAY(), -7, 'days')`;\n    break;\n  case 'month':\n    dateFilter = `{Created} >= DATEADD(TODAY(), -30, 'days')`;\n    break;\n  default:\n    dateFilter = `IS_SAME({Created}, TODAY(), 'day')`;\n}\n\n// Build filter with correct facility field name\nlet filterFormula = dateFilter;\nif (facility !== 'all') {\n  // FIXED: 'Printer Used' → 'Print Facility'\n  filterFormula = `AND(${dateFilter}, {Print Facility} = '${facility}')`;\n}\n\nreturn [{\n  json: {\n    filterFormula,\n    dateRange,\n    facility\n  }\n}];"
+      },
+      "id": "93d6c9fe-040a-4c7c-89fc-7dedd1d85ef0",
+      "name": "Prepare Metrics Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions"
+        },
+        "filterByFormula": "={{ $json.filterFormula }}",
+        "options": {}
+      },
+      "id": "7e9b0d84-3c5a-4f93-8e5e-0db9eb4ea5a4",
+      "name": "Get Production Records",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        -40
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate production metrics with correct status mappings\nconst productions = $('Get Production Records').all();\nconst requestData = $('Prepare Metrics Query').first().json;\n\n// Initialize counters\nconst metrics = {\n  totalJobs: productions.length,\n  byStatus: {\n    pending: 0,\n    inProgress: 0,\n    printing: 0,\n    complete: 0,\n    qc: 0,\n    failed: 0\n  },\n  byFacility: {},\n  averageTime: 0,\n  efficiency: 0\n};\n\n// Count by status using display names (can be mapped to IDs later)\nproductions.forEach(prod => {\n  const fields = prod.json.fields;\n  const status = fields['Production Status'];\n  const facility = fields['Print Facility'] || 'Unknown';\n  \n  // Count by status\n  switch(status) {\n    case 'Pending':\n    case 'sel1RK6yvzcNivPG7':\n      metrics.byStatus.pending++;\n      break;\n    case 'In Progress':\n    case 'selxSGE8XgueKcXnf':\n      metrics.byStatus.inProgress++;\n      break;\n    case 'Printing':\n    case 'sel6f7v4gN9GPqgxt':\n      metrics.byStatus.printing++;\n      break;\n    case 'Complete':\n    case 'selqaDvX83t7yTk3k':\n      metrics.byStatus.complete++;\n      break;\n    case 'Quality Check':\n    case 'selDaG1p0sQ2kO7HI':\n      metrics.byStatus.qc++;\n      break;\n    case 'Failed':\n    case 'selqVrzSmxkNPZQUn':\n      metrics.byStatus.failed++;\n      break;\n  }\n  \n  // Count by facility\n  if (!metrics.byFacility[facility]) {\n    metrics.byFacility[facility] = 0;\n  }\n  metrics.byFacility[facility]++;\n});\n\n// Calculate efficiency (completed / total)\nmetrics.efficiency = metrics.totalJobs > 0 ? \n  Math.round((metrics.byStatus.complete / metrics.totalJobs) * 100) : 0;\n\nreturn [{\n  json: {\n    success: true,\n    dateRange: requestData.dateRange,\n    facility: requestData.facility,\n    metrics,\n    generatedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "8b2d39de-60af-4b8d-ad4d-ea80efd8349c",
+      "name": "Calculate Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "13465a6e-3b1e-4dc6-be8e-d9796850f8f8",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        340,
+        -40
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Production Metrics": {
+      "main": [
+        [
+          {
+            "node": "Prepare Metrics Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Metrics Query": {
+      "main": [
+        [
+          {
+            "node": "Get Production Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Production Records": {
+      "main": [
+        [
+          {
+            "node": "Calculate Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Metrics": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "production-metrics-fixed-001",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "ProductionMetricsFixed",
+  "tags": []
+}

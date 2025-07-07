@@ -1,0 +1,477 @@
+{
+  "name": "TS Order Management - Order Status Webhook - RESTORED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "get-order-status",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "0f0b991d-3f99-4a2e-9fea-080d8e065915",
+      "name": "Get Order Status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        820
+      ],
+      "webhookId": "get-order-status-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process order status request with multiple search options\nconst input = $input.first().json;\nconst { orderId, orderNumber, email } = input.body || input;\n\n// Build filter based on provided input\nlet filterFormula = '';\nif (orderId) {\n  filterFormula = `RECORD_ID() = '${orderId}'`;\n} else if (orderNumber) {\n  filterFormula = `{Order ID} = '${orderNumber}'`;\n} else if (email) {\n  filterFormula = `{Email} = '${email}'`;\n} else {\n  return [{\n    json: {\n      success: false,\n      error: 'Please provide orderId, orderNumber, or email'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    filterFormula,\n    includeItems: true,\n    searchType: orderId ? 'id' : orderNumber ? 'number' : 'email',\n    searchValue: orderId || orderNumber || email\n  }\n}];"
+      },
+      "id": "b6149fc0-3fbc-4457-9575-bd1773dc22d7",
+      "name": "Process Order Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2XIKxHAG7e9BFS",
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tbl2XIKxHAG7e9BFS"
+        },
+        "filterByFormula": "={{ $json.filterFormula }}",
+        "options": {}
+      },
+      "id": "0ee42591-5a9b-40ce-bdbd-3a8f4244e46a",
+      "name": "Find Order",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        820
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get order details and prepare for items lookup - CORRECTED FIELD NAMES\nconst orders = $('Find Order').all();\n\nif (orders.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'Order not found',\n      status: 404\n    }\n  }];\n}\n\nconst order = orders[0].json;\n// CORRECTED: 'Order Items' → 'Linked Order Items'\nconst orderItemIds = order.fields?.['Linked Order Items'] || [];\n\n// Build filter for order items\nconst itemFilter = orderItemIds.length > 0 \n  ? `OR(${orderItemIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`\n  : '';\n\nreturn [{\n  json: {\n    order: {\n      id: order.id,\n      orderNumber: order.fields?.['Order ID'],\n      submissionId: order.fields?.['Submission ID'],\n      status: order.fields?.['Order Status'],\n      paymentStatus: order.fields?.['Payment Status'],\n      customer: order.fields?.['Customer Name'],\n      email: order.fields?.['Email'],\n      phone: order.fields?.['Phone'],\n      company: order.fields?.['Customer Company'],\n      orderDate: order.fields?.['Order Date'],\n      total: order.fields?.['Total $'],\n      subtotal: order.fields?.['Subtotal'],\n      shipping: order.fields?.['Shipping $'],\n      tax: order.fields?.['Tax $'],\n      // CORRECTED: 'Shipping Method' → 'Shipping Option'\n      shippingOption: order.fields?.['Shipping Option'],\n      shippingAddress: order.fields?.['Shipping Address'],\n      fulfillmentOption: order.fields?.['Fulfillment Option'],\n      rushService: order.fields?.['Rush Service'], // Checkbox field\n      productionOption: order.fields?.['Production Option'],\n      priorityLevel: order.fields?.['Priority Level'],\n      productionProgress: order.fields?.['Production Progress'] || 0,\n      pickupCode: order.fields?.['Pickup Code'],\n      pickupConfirmed: order.fields?.['Pickup Confirmed'],\n      trackingNumber: order.fields?.['Tracking Number'],\n      internalNotes: order.fields?.['Internal Notes']\n    },\n    itemFilter,\n    hasItems: orderItemIds.length > 0\n  }\n}];"
+      },
+      "id": "3b955903-2790-4611-ae6b-ec02c5e7c4a6",
+      "name": "Process Order Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-items",
+              "leftValue": "={{ $json.hasItems }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4e58155-f829-4dcd-8601-dc9c63fefb98",
+      "name": "Has Order Items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        200,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTN1vUIpu6HHqEL",
+          "mode": "list",
+          "cachedResultName": "Order Items",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblTN1vUIpu6HHqEL"
+        },
+        "filterByFormula": "={{ $json.itemFilter }}",
+        "options": {}
+      },
+      "id": "37e42246-11fb-4212-8cad-b6a61932e73c",
+      "name": "Get Order Items",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        400,
+        800
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get production status for each item - CORRECTED FIELD NAMES\nconst orderData = $('Process Order Data').first().json;\nconst items = $('Get Order Items').all();\n\n// Get production IDs from items\nconst productionIds = [];\nitems.forEach(item => {\n  // CORRECTED: Check for 'Linked Production' field\n  const prodIds = item.json.fields?.['Linked Production'] || [];\n  productionIds.push(...prodIds);\n});\n\n// Build filter for productions\nconst productionFilter = productionIds.length > 0\n  ? `OR(${productionIds.map(id => `RECORD_ID() = '${id}'`).join(', ')})`\n  : '';\n\nreturn [{\n  json: {\n    orderData,\n    items: items.map(item => ({\n      id: item.json.id,\n      itemUid: item.json.fields?.['Item UID'],\n      productId: item.json.fields?.['Product ID'],\n      title: item.json.fields?.['Title'],\n      sku: item.json.fields?.['SKU'],\n      quantity: item.json.fields?.['Quantity'],\n      unitPrice: item.json.fields?.['Unit Price'],\n      status: item.json.fields?.['Item Status'],\n      productType: item.json.fields?.['Product Type'],\n      dimensions: item.json.fields?.['Dimensions (in)'],\n      printFacility: item.json.fields?.['Print Facility'], // CORRECTED field name\n      printerAssignment: item.json.fields?.['Printer Assignment'],\n      linkedProduction: item.json.fields?.['Linked Production'] || []\n    })),\n    productionFilter,\n    hasProductions: productionIds.length > 0\n  }\n}];"
+      },
+      "id": "7d957028-d654-41b0-bd5c-d689a1605770",
+      "name": "Prepare Production Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-productions",
+              "leftValue": "={{ $json.hasProductions }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8772944a-0524-44cb-a018-4dd51d2fb83d",
+      "name": "Has Productions?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        800,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblKmtH1t8EhgkBT9"
+        },
+        "filterByFormula": "={{ $json.productionFilter }}",
+        "options": {
+          "fields": [
+            "Production ID",
+            "Production Status",
+            "Stage Progress",
+            "Print Started",
+            "Print Completed",
+            "QC Completed",
+            "Cutting Completed",
+            "Ship Completed",
+            "Pickup Completed",
+            "Print Facility",
+            "Printer Assignment",
+            "QC Status"
+          ]
+        }
+      },
+      "id": "41e0fd89-57e3-446c-a37d-880f2dd98933",
+      "name": "Get Productions",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        780
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compile comprehensive final response\nconst baseData = $('Prepare Production Lookup').first().json;\nconst productions = $('Get Productions').all() || [];\n\n// Map production data by ID\nconst productionMap = new Map();\nproductions.forEach(prod => {\n  const fields = prod.json.fields || {};\n  productionMap.set(prod.json.id, {\n    id: fields['Production ID'],\n    status: fields['Production Status'],\n    progress: fields['Stage Progress'] || 0,\n    qcStatus: fields['QC Status'],\n    facility: fields['Print Facility'],\n    printer: fields['Printer Assignment'],\n    stages: {\n      printStarted: fields['Print Started'],\n      printCompleted: fields['Print Completed'],\n      qcCompleted: fields['QC Completed'],\n      cuttingCompleted: fields['Cutting Completed'],\n      shipCompleted: fields['Ship Completed'],\n      pickupCompleted: fields['Pickup Completed']\n    }\n  });\n});\n\n// Enhanced items with production data and progress calculation\nconst enhancedItems = baseData.items.map(item => {\n  // Find matching productions for this item\n  const itemProductions = item.linkedProduction.map(prodId => productionMap.get(prodId)).filter(Boolean);\n  \n  // Calculate item progress from productions\n  const itemProgress = itemProductions.length > 0\n    ? Math.round(itemProductions.reduce((sum, prod) => sum + (prod.progress || 0), 0) / itemProductions.length)\n    : getProgressFromStatus(item.status);\n  \n  return {\n    ...item,\n    productions: itemProductions,\n    currentStage: determineCurrentStage(item.status),\n    progress: itemProgress,\n    isComplete: item.status === 'selQoFDqlU1FnFPm5' || item.status === 'Picked Up' || item.status === 'seleb0th63ExQf1Rg' || item.status === 'Shipped'\n  };\n});\n\n// Helper functions\nfunction determineCurrentStage(status) {\n  const stageMap = {\n    'selz6OGEPsBMaNKCC': 'New',\n    'selpOeSWntwiDAV3r': 'Pending Art',\n    'selPEJLC776WbP7ua': 'Art Received',\n    'selIEfpSRTaGSNQKm': 'Ready for Production',\n    'selkKJeYvqJOnuw7F': 'In Production',\n    'selL6416cXay8kKNG': 'Quality Check',\n    'sel0hOhoCnkK63fUG': 'Ready to Ship',\n    'selkwzGWTTHzSq944': 'Ready for Pickup',\n    'seleb0th63ExQf1Rg': 'Shipped',\n    'selQoFDqlU1FnFPm5': 'Picked Up'\n  };\n  return stageMap[status] || status;\n}\n\nfunction getProgressFromStatus(status) {\n  const progressMap = {\n    'selz6OGEPsBMaNKCC': 0,   // New\n    'selpOeSWntwiDAV3r': 10,  // Pending Art\n    'selPEJLC776WbP7ua': 20,  // Art Received\n    'selIEfpSRTaGSNQKm': 30,  // Ready for Production\n    'selkKJeYvqJOnuw7F': 60,  // In Production\n    'selL6416cXay8kKNG': 80,  // Quality Check\n    'sel0hOhoCnkK63fUG': 90,  // Ready to Ship\n    'selkwzGWTTHzSq944': 95,  // Ready for Pickup\n    'seleb0th63ExQf1Rg': 100, // Shipped\n    'selQoFDqlU1FnFPm5': 100  // Picked Up\n  };\n  return progressMap[status] || 0;\n}\n\n// Calculate overall order progress\nconst totalProgress = enhancedItems.length > 0\n  ? Math.round(enhancedItems.reduce((sum, item) => sum + item.progress, 0) / enhancedItems.length)\n  : 0;\n\n// Count items by status\nconst statusCounts = {\n  new: enhancedItems.filter(i => i.status === 'selz6OGEPsBMaNKCC').length,\n  pendingArt: enhancedItems.filter(i => i.status === 'selpOeSWntwiDAV3r').length,\n  readyForProduction: enhancedItems.filter(i => i.status === 'selIEfpSRTaGSNQKm').length,\n  inProduction: enhancedItems.filter(i => ['selkKJeYvqJOnuw7F', 'selL6416cXay8kKNG'].includes(i.status)).length,\n  readyToShip: enhancedItems.filter(i => i.status === 'sel0hOhoCnkK63fUG').length,\n  readyForPickup: enhancedItems.filter(i => i.status === 'selkwzGWTTHzSq944').length,\n  completed: enhancedItems.filter(i => i.isComplete).length\n};\n\nreturn [{\n  json: {\n    success: true,\n    order: {\n      ...baseData.orderData.order,\n      overallProgress: totalProgress,\n      itemCount: enhancedItems.length,\n      completedCount: statusCounts.completed,\n      estimatedCompletion: calculateEstimatedCompletion(enhancedItems)\n    },\n    items: enhancedItems,\n    summary: {\n      total: enhancedItems.length,\n      ...statusCounts,\n      averageProgress: totalProgress\n    },\n    productions: productions.map(p => ({ \n      id: p.json.id, \n      ...productionMap.get(p.json.id) \n    }))\n  }\n}];\n\nfunction calculateEstimatedCompletion(items) {\n  const inProgressItems = items.filter(i => !i.isComplete);\n  if (inProgressItems.length === 0) return null;\n  \n  // Simple estimation: 2 days per incomplete item\n  const daysToComplete = Math.ceil(inProgressItems.length / 5) * 2;\n  const estimatedDate = new Date();\n  estimatedDate.setDate(estimatedDate.getDate() + daysToComplete);\n  return estimatedDate.toISOString();\n}"
+      },
+      "id": "0d1510ee-7782-46ca-a09b-9808a03b36d7",
+      "name": "Compile Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        860
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle case where order has no items\nconst orderData = $('Process Order Data').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    order: {\n      ...orderData.order,\n      overallProgress: 0,\n      itemCount: 0,\n      completedCount: 0\n    },\n    items: [],\n    summary: {\n      total: 0,\n      message: 'Order has no items'\n    },\n    productions: []\n  }\n}];"
+      },
+      "id": "no-items-handler",
+      "name": "Handle No Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle case where items have no productions\nconst lookupData = $('Prepare Production Lookup').first().json;\n\n// Enhanced items without production data\nconst enhancedItems = lookupData.items.map(item => ({\n  ...item,\n  productions: [],\n  currentStage: determineCurrentStage(item.status),\n  progress: getProgressFromStatus(item.status),\n  isComplete: item.status === 'selQoFDqlU1FnFPm5' || item.status === 'seleb0th63ExQf1Rg'\n}));\n\nfunction determineCurrentStage(status) {\n  const stageMap = {\n    'selz6OGEPsBMaNKCC': 'New',\n    'selpOeSWntwiDAV3r': 'Pending Art',\n    'selPEJLC776WbP7ua': 'Art Received',\n    'selIEfpSRTaGSNQKm': 'Ready for Production',\n    'selkKJeYvqJOnuw7F': 'In Production',\n    'selL6416cXay8kKNG': 'Quality Check',\n    'sel0hOhoCnkK63fUG': 'Ready to Ship',\n    'selkwzGWTTHzSq944': 'Ready for Pickup',\n    'seleb0th63ExQf1Rg': 'Shipped',\n    'selQoFDqlU1FnFPm5': 'Picked Up'\n  };\n  return stageMap[status] || status;\n}\n\nfunction getProgressFromStatus(status) {\n  const progressMap = {\n    'selz6OGEPsBMaNKCC': 0,\n    'selpOeSWntwiDAV3r': 10,\n    'selPEJLC776WbP7ua': 20,\n    'selIEfpSRTaGSNQKm': 30,\n    'selkKJeYvqJOnuw7F': 60,\n    'selL6416cXay8kKNG': 80,\n    'sel0hOhoCnkK63fUG': 90,\n    'selkwzGWTTHzSq944': 95,\n    'seleb0th63ExQf1Rg': 100,\n    'selQoFDqlU1FnFPm5': 100\n  };\n  return progressMap[status] || 0;\n}\n\nconst totalProgress = enhancedItems.length > 0\n  ? Math.round(enhancedItems.reduce((sum, item) => sum + item.progress, 0) / enhancedItems.length)\n  : 0;\n\nreturn [{\n  json: {\n    success: true,\n    order: {\n      ...lookupData.orderData.order,\n      overallProgress: totalProgress,\n      itemCount: enhancedItems.length,\n      completedCount: enhancedItems.filter(i => i.isComplete).length\n    },\n    items: enhancedItems,\n    summary: {\n      total: enhancedItems.length,\n      completed: enhancedItems.filter(i => i.isComplete).length,\n      message: 'Items found but no production records'\n    },\n    productions: []\n  }\n}];"
+      },
+      "id": "no-productions-handler",
+      "name": "Handle No Productions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "002d76e7-e64e-4975-87d0-d363258716d3",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        980
+      ]
+    }
+  ],
+  "connections": {
+    "Get Order Status": {
+      "main": [
+        [
+          {
+            "node": "Process Order Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Order Request": {
+      "main": [
+        [
+          {
+            "node": "Find Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Order": {
+      "main": [
+        [
+          {
+            "node": "Process Order Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Order Data": {
+      "main": [
+        [
+          {
+            "node": "Has Order Items?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Order Items?": {
+      "main": [
+        [
+          {
+            "node": "Get Order Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle No Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Order Items": {
+      "main": [
+        [
+          {
+            "node": "Prepare Production Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Production Lookup": {
+      "main": [
+        [
+          {
+            "node": "Has Productions?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Productions?": {
+      "main": [
+        [
+          {
+            "node": "Get Productions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle No Productions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Productions": {
+      "main": [
+        [
+          {
+            "node": "Compile Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle No Items": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle No Productions": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "order-status-restored-001",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "OrderStatusRestored",
+  "tags": []
+}

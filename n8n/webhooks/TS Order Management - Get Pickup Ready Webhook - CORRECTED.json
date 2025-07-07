@@ -1,0 +1,187 @@
+{
+  "name": "TS Order Management - Get Pickup Ready Webhook - CORRECTED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "get-pickup-ready",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "e915961c-b4d6-4a68-ac58-86b897ae47cc",
+      "name": "Get Pickup Ready List",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -220
+      ],
+      "webhookId": "get-pickup-ready-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get orders ready for pickup\n// An order is ready when all items are completed but not yet picked up\n\nconst today = new Date().toISOString().split('T')[0];\n\n// Filter for orders that are completed but not picked up (using correct status ID)\nconst filterFormula = `AND(\n  {Order Status} = 'seltnfE3r8HcApXwG',\n  {Pickup Confirmed} = BLANK(),\n  {Production Progress} >= 100\n)`;\n\nreturn [{\n  json: {\n    filterFormula,\n    requestDate: today\n  }\n}];"
+      },
+      "id": "a265e0c4-2489-4735-a42d-14363b4196b1",
+      "name": "Prepare Pickup Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2XIKxHAG7e9BFS",
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "filterByFormula": "={{ $json.filterFormula }}",
+        "options": {}
+      },
+      "id": "0116c675-071e-44bf-8b30-b972149bd322",
+      "name": "Get Ready Orders",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -220
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format pickup ready list - CORRECTED FIELD NAMES\nconst orders = $('Get Ready Orders').all();\n\nconst pickupList = orders.map(order => {\n  const fields = order.json.fields;\n  \n  // Calculate days waiting\n  const completedDate = fields['Status Changed At'];\n  const daysWaiting = completedDate \n    ? Math.floor((Date.now() - new Date(completedDate).getTime()) / (1000 * 60 * 60 * 24))\n    : 0;\n  \n  return {\n    orderId: order.json.id,\n    orderNumber: fields['Order ID'],\n    customerName: fields['Customer Name'],\n    email: fields['Email'],\n    phone: fields['Phone'],\n    // CORRECTED: 'Order Items' → 'Linked Order Items'\n    itemCount: fields['Linked Order Items']?.length || 0,\n    orderTotal: fields['Total $'],\n    completedDate: completedDate,\n    daysWaiting,\n    // CORRECTED: Rush Service is checkbox, not select\n    rushOrder: fields['Rush Service'] === true,\n    // CORRECTED: 'Shipping Method' → 'Shipping Option'\n    shippingMethod: fields['Shipping Option'],\n    pickupCode: fields['Pickup Code'] || `PU-${order.json.id.slice(-4)}`,\n    notes: fields['Internal Notes'],\n    priority: daysWaiting > 3 ? 'high' : fields['Rush Service'] === true ? 'high' : 'normal'\n  };\n});\n\n// Sort by priority and days waiting\npickupList.sort((a, b) => {\n  if (a.priority !== b.priority) {\n    return a.priority === 'high' ? -1 : 1;\n  }\n  return b.daysWaiting - a.daysWaiting;\n});\n\n// Group by priority\nconst grouped = {\n  urgent: pickupList.filter(o => o.daysWaiting > 5),\n  high: pickupList.filter(o => o.priority === 'high' && o.daysWaiting <= 5),\n  normal: pickupList.filter(o => o.priority === 'normal')\n};\n\nreturn [{\n  json: {\n    success: true,\n    totalOrders: pickupList.length,\n    summary: {\n      urgent: grouped.urgent.length,\n      high: grouped.high.length,\n      normal: grouped.normal.length\n    },\n    orders: pickupList,\n    grouped\n  }\n}];"
+      },
+      "id": "8b2d39de-60af-4b8d-ad4d-ea80efd8349c",
+      "name": "Format Pickup List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "13465a6e-3b1e-4dc6-be8e-d9796850f8f8",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "---\n\n## 📦 4. Pickup Ready List Webhook - CORRECTED\n\n### 🔧 **CORRECTED FIELD NAMES:**\n```yaml\nFIXED ISSUES:\n- 'Order Items' → 'Linked Order Items'\n- 'Shipping Method' → 'Shipping Option'\n- 'Rush Service' comparison: 'Rush' → true (checkbox)\n- Added proper webhook response configuration\n- Added CORS headers\n\nPURPOSE: Lists completed orders awaiting pickup\nENDPOINT: /webhook/get-pickup-ready\nMETHOD: GET\nTRIGGER: Pickup dashboard, daily lists\n\nCONNECTS TO:\n- Orders table (main query)\n- Filters by status & completion\n\nKEY MAPPINGS:\n- Order Status = \"Completed\"\n- Pickup Confirmed = BLANK()\n- Production Progress >= 100\n\nRETURNS:\n{\n  \"orders\": [...],\n  \"grouped\": {\n    \"urgent\": [...],  // >5 days waiting\n    \"high\": [...],    // rush orders\n    \"normal\": [...]\n  }\n}\n\nAUTO-CALCULATIONS:\n- daysWaiting from Status Changed At\n- pickupCode: \"PU-\" + last 4 of ID\n- priority based on wait time\n\nCRITICAL NOTES:\n- ALL FIELD NAMES NOW MATCH AIRTABLE SCHEMA\n- Rush Service is checkbox (true/false)\n- Webhook waits for complete response\n```",
+        "height": 740,
+        "width": 580,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        -420
+      ],
+      "id": "7319dd93-9ad4-4663-aca7-b4b0546135ec",
+      "name": "Sticky Note - CORRECTED"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Pickup Ready List": {
+      "main": [
+        [
+          {
+            "node": "Prepare Pickup Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Pickup Query": {
+      "main": [
+        [
+          {
+            "node": "Get Ready Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Ready Orders": {
+      "main": [
+        [
+          {
+            "node": "Format Pickup List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pickup List": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2bc03d4a-6e83-40ac-9355-e192f3351f55",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "BcJNVqVJJYlsQoYQ",
+  "tags": []
+} 

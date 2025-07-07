@@ -1,0 +1,171 @@
+{
+  "name": "TS Order Management - Get Shipping Queue Webhook - FIXED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "get-shipping-queue",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "fedc6f4f-1f3c-4ac0-bbe9-4ba90022faa7",
+      "name": "Get Shipping Queue",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -140
+      ],
+      "webhookId": "get-shipping-queue-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get orders ready to ship with correct field mappings\nconst filterFormula = `AND(\n  OR(\n    {Order Status} = 'selPwy3cb3EIbUBVh',\n    {Order Status} = 'seltnfE3r8HcApXwG'\n  ),\n  {Tracking Number} = BLANK(),\n  {Production Progress} >= 100\n)`;\n\nreturn [{\n  json: {\n    filterFormula\n  }\n}];"
+      },
+      "id": "b2ba9f6c-1ae3-40c6-b2b3-18854de8a517",
+      "name": "Prepare Shipping Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2XIKxHAG7e9BFS",
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "filterByFormula": "={{ $json.filterFormula }}",
+        "options": {}
+      },
+      "id": "7e9b0d84-3c5a-4f93-8e5e-0db9eb4ea5a4",
+      "name": "Get Shipping Orders",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -140
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format shipping queue with CORRECTED field names\nconst orders = $('Get Shipping Orders').all();\n\nconst shippingQueue = orders.map(order => {\n  const fields = order.json.fields;\n  \n  return {\n    orderId: order.json.id,\n    orderNumber: fields['Order ID'],\n    customerName: fields['Customer Name'],\n    email: fields['Email'],\n    phone: fields['Phone'],\n    // CORRECTED: 'Order Items' → 'Linked Order Items'\n    itemCount: fields['Linked Order Items']?.length || 0,\n    orderTotal: fields['Total $'],\n    // CORRECTED: Rush Service is checkbox\n    rushOrder: fields['Rush Service'] === true,\n    // CORRECTED: 'Shipping Method' → 'Shipping Option'\n    shippingOption: fields['Shipping Option'],\n    shippingAddress: fields['Shipping Address'],\n    orderStatus: fields['Order Status'],\n    productionProgress: fields['Production Progress'] || 0,\n    estimatedShipDate: fields['Estimated Ship Date'],\n    orderDate: fields['Order Date'],\n    priority: fields['Rush Service'] === true ? 'high' : 'normal'\n  };\n});\n\n// Sort by priority then by order date\nshippingQueue.sort((a, b) => {\n  if (a.priority !== b.priority) {\n    return a.priority === 'high' ? -1 : 1;\n  }\n  // Handle date comparison safely\n  const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;\n  const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;\n  return dateA - dateB;\n});\n\nreturn [{\n  json: {\n    success: true,\n    totalOrders: shippingQueue.length,\n    orders: shippingQueue,\n    summary: {\n      rush: shippingQueue.filter(o => o.rushOrder).length,\n      standard: shippingQueue.filter(o => !o.rushOrder).length\n    }\n  }\n}];"
+      },
+      "id": "8b2d39de-60af-4b8d-ad4d-ea80efd8349c",
+      "name": "Format Shipping Queue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "13465a6e-3b1e-4dc6-be8e-d9796850f8f8",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -140
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Shipping Queue": {
+      "main": [
+        [
+          {
+            "node": "Prepare Shipping Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Shipping Query": {
+      "main": [
+        [
+          {
+            "node": "Get Shipping Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Shipping Orders": {
+      "main": [
+        [
+          {
+            "node": "Format Shipping Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Shipping Queue": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "shipping-queue-fixed-001",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "ShippingQueueFixed",
+  "tags": []
+}

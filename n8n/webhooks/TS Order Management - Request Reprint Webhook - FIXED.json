@@ -1,0 +1,390 @@
+{
+  "name": "TS Order Management - Request Reprint Webhook - FIXED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "request-reprint",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "reprint-webhook",
+      "name": "Request Reprint",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -40
+      ],
+      "webhookId": "request-reprint-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process reprint request with validation\nconst input = $input.first().json;\nconst { productionId, reason, requestedBy, priority = 'Normal' } = input.body || input;\n\n// Validate required fields\nif (!productionId || !reason) {\n  return [{\n    json: {\n      success: false,\n      error: 'Missing required fields: productionId and reason'\n    }\n  }];\n}\n\n// Validate priority with correct select option IDs and explicit validation\nconst priorityMapping = {\n  'Urgent': 'selCTmEz2QSZUZ5iM',\n  'High': 'selWJLWXIkmlczmNo',\n  'Normal': 'selLphBntLo9FXYIX'\n};\n\nlet priorityId = null;\nif (priority === 'Urgent') {\n  priorityId = priorityMapping.Urgent;\n} else if (priority === 'High') {\n  priorityId = priorityMapping.High;\n} else if (priority === 'Normal') {\n  priorityId = priorityMapping.Normal;\n}\n\nif (!priorityId) {\n  return [{\n    json: {\n      success: false,\n      error: `Invalid priority. Must be one of: ${Object.keys(priorityMapping).join(', ')}`\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    productionId,\n    reason,\n    requestedBy: requestedBy || 'System',\n    priority,\n    priorityId,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "validate-request-node",
+      "name": "Validate Reprint Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "get",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions"
+        },
+        "id": "={{ $json.productionId }}"
+      },
+      "id": "get-original-node",
+      "name": "Get Original Production",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -40
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update original production to reprint status\nconst requestData = $('Validate Reprint Request').first().json;\nconst originalProduction = $('Get Original Production').first().json;\n\n// Update original production with correct status ID\nconst originalUpdate = {\n  'Production Status': 'selqVrzSmxkNPZQUn',\n  'Reprint Requested': requestData.timestamp,\n  'Reprint Reason': requestData.reason,\n  'Reprint Count': (originalProduction.fields['Reprint Count'] || 0) + 1\n};\n\n// Prepare new production record with explicit fields\nconst newProductionData = {\n  'Order Item': originalProduction.fields['Order Item'],\n  'Linked Order': originalProduction.fields['Linked Order'],\n  'Production Status': 'sel1RK6yvzcNivPG7',\n  'Priority': requestData.priorityId,\n  'Stage Progress': 0,\n  'Reprint Number': (originalProduction.fields['Reprint Count'] || 0) + 1,\n  'Reprint Reason': requestData.reason,\n  'Print Facility': originalProduction.fields['Print Facility'],\n  'Linked Batch': originalProduction.fields['Linked Batch'],\n  'QC Status': 'selZJDZvaTjgNtiyx',\n  'Created': requestData.timestamp\n};\n\nreturn [\n  {\n    json: {\n      type: 'update_original',\n      productionId: requestData.productionId,\n      updateData: originalUpdate\n    }\n  },\n  {\n    json: {\n      type: 'create_reprint',\n      newProductionData,\n      requestData\n    }\n  }\n];"
+      },
+      "id": "prepare-updates-node",
+      "name": "Prepare Reprint Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "update_original"
+            }
+          ]
+        }
+      },
+      "id": "filter-update-node",
+      "name": "Filter Update Original",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "create_reprint"
+            }
+          ]
+        }
+      },
+      "id": "filter-create-node",
+      "name": "Filter Create Reprint",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        400,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.productionId }}",
+            "Production Status": "={{ $json.updateData['Production Status'] }}",
+            "Reprint Requested": "={{ $json.updateData['Reprint Requested'] }}",
+            "Reprint Reason": "={{ $json.updateData['Reprint Reason'] }}",
+            "Reprint Count": "={{ $json.updateData['Reprint Count'] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        }
+      },
+      "id": "update-original-node",
+      "name": "Update Original Production",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        600,
+        -140
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Order Item": "={{ $json.newProductionData['Order Item'] }}",
+            "Linked Order": "={{ $json.newProductionData['Linked Order'] }}",
+            "Production Status": "={{ $json.newProductionData['Production Status'] }}",
+            "Priority": "={{ $json.newProductionData['Priority'] }}",
+            "Stage Progress": "={{ $json.newProductionData['Stage Progress'] }}",
+            "Reprint Number": "={{ $json.newProductionData['Reprint Number'] }}",
+            "Reprint Reason": "={{ $json.newProductionData['Reprint Reason'] }}",
+            "Print Facility": "={{ $json.newProductionData['Print Facility'] }}",
+            "Linked Batch": "={{ $json.newProductionData['Linked Batch'] }}",
+            "QC Status": "={{ $json.newProductionData['QC Status'] }}",
+            "Created": "={{ $json.newProductionData['Created'] }}"
+          }
+        }
+      },
+      "id": "create-reprint-node",
+      "name": "Create Reprint Production",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        600,
+        60
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine results and create response\nconst updateResult = $('Update Original Production').first()?.json;\nconst createResult = $('Create Reprint Production').first()?.json;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Reprint request processed successfully',\n    originalProductionId: updateResult?.id,\n    newProductionId: createResult?.id,\n    reprintNumber: createResult?.fields?.['Reprint Number'],\n    reason: createResult?.fields?.['Reprint Reason'],\n    timestamp: createResult?.fields?.['Created']\n  }\n}];"
+      },
+      "id": "create-response-node",
+      "name": "Create Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook-node",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "Request Reprint": {
+      "main": [
+        [
+          {
+            "node": "Validate Reprint Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Reprint Request": {
+      "main": [
+        [
+          {
+            "node": "Get Original Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Original Production": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reprint Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reprint Updates": {
+      "main": [
+        [
+          {
+            "node": "Filter Update Original",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Create Reprint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Update Original": {
+      "main": [
+        [
+          {
+            "node": "Update Original Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Create Reprint": {
+      "main": [
+        [
+          {
+            "node": "Create Reprint Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Original Production": {
+      "main": [
+        [
+          {
+            "node": "Create Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Reprint Production": {
+      "main": [
+        [
+          {
+            "node": "Create Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "request-reprint-fixed-002",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "RequestReprintFixed",
+  "tags": []
+}

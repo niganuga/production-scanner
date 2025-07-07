@@ -1,0 +1,426 @@
+{
+  "name": "TS Order Management - Production Stage Scan - RESTORED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production-stage-scan",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, GET, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "10f3135f-8a4f-4089-979a-f9ed5838becc",
+      "name": "Production Stage Scan",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        640
+      ],
+      "webhookId": "prod-stage-scan-002"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Production Stage Handler with corrected field mappings\nconst input = $input.first().json;\nconst { qrCode, productionId, stage, action = 'complete', operator, notes, printer } = input.body || input;\n\n// Handle both QR scan and manual input\nlet prodId = null;\nif (qrCode && qrCode.startsWith('PROD:')) {\n  prodId = qrCode.replace('PROD:', '');\n} else if (productionId) {\n  prodId = productionId;\n} else {\n  return [{\n    json: {\n      success: false,\n      error: 'No production ID provided (qrCode or productionId required)'\n    }\n  }];\n}\n\n// Current timestamp\nconst now = new Date().toISOString();\n\n// Stage configuration with CORRECTED status IDs from schema\nconst stageUpdates = {\n  'print': {\n    'start': {\n      fields: { \n        'Print Started': now, \n        'Production Status': 'sel6f7v4gN9GPqgxt', // Printing ID\n        'Printer Assignment': printer || null \n      },\n      progress: 25,\n      itemStatus: 'selkKJeYvqJOnuw7F' // In Production ID\n    },\n    'complete': {\n      fields: { \n        'Print Completed': now, \n        'Production Status': 'selDaG1p0sQ2kO7HI' // Quality Check ID\n      },\n      progress: 50,\n      itemStatus: 'selL6416cXay8kKNG' // Quality Check ID\n    }\n  },\n  'qc': {\n    'complete': {\n      fields: { \n        'QC Completed': now, \n        'QC Status': 'selfEn0LntEHPjyFl', // Passed ID\n        'Production Status': 'selPaWyNohscJYysh' // Cutting ID\n      },\n      progress: 75,\n      itemStatus: 'sel0hOhoCnkK63fUG' // Ready to Ship ID\n    }\n  },\n  'cut': {\n    'complete': {\n      fields: { \n        'Cutting Completed': now, \n        'Production Status': 'selqaDvX83t7yTk3k' // Complete ID\n      },\n      progress: 90,\n      itemStatus: 'sel0hOhoCnkK63fUG' // Ready to Ship ID\n    }\n  },\n  'ship': {\n    'complete': {\n      fields: { \n        'Ship Completed': now, \n        'Production Status': 'selniYbou150fk5I9' // Shipped ID\n      },\n      progress: 100,\n      itemStatus: 'seleb0th63ExQf1Rg' // Shipped ID\n    }\n  }\n};\n\n// Get update configuration with explicit validation\nlet update = null;\nconst normalizedStage = stage.toLowerCase();\nconst normalizedAction = action;\n\nif (normalizedStage === 'print') {\n  if (normalizedAction === 'start') {\n    update = stageUpdates.print.start;\n  } else if (normalizedAction === 'complete') {\n    update = stageUpdates.print.complete;\n  }\n} else if (normalizedStage === 'qc') {\n  if (normalizedAction === 'complete') {\n    update = stageUpdates.qc.complete;\n  }\n} else if (normalizedStage === 'cut') {\n  if (normalizedAction === 'complete') {\n    update = stageUpdates.cut.complete;\n  }\n} else if (normalizedStage === 'ship') {\n  if (normalizedAction === 'complete') {\n    update = stageUpdates.ship.complete;\n  }\n}\nif (!update) {\n  return [{\n    json: {\n      success: false,\n      error: `Invalid stage/action: ${stage}/${action}. Valid combinations: print/start, print/complete, qc/complete, cut/complete, ship/complete`\n    }\n  }];\n}\n\n// Build scan history entry\nconst scanEntry = `${now} - ${stage} ${action} by ${operator || 'System'}${printer ? ` on ${printer}` : ''}${notes ? ` - ${notes}` : ''}`;\n\n// Build filter to find record\nconst filterFormula = `{Production ID} = '${prodId}'`;\n\nreturn [{\n  json: {\n    filterFormula,\n    updateFields: {\n      ...update.fields,\n      'Stage Progress': update.progress,\n      'Last Modified': now\n    },\n    scanHistoryEntry: scanEntry,\n    itemStatus: update.itemStatus,\n    stage: stage.toLowerCase(),\n    action,\n    operator: operator || 'System'\n  }\n}];"
+      },
+      "id": "2e66da68-c934-4479-9868-4d88799ae01e",
+      "name": "Process Stage Scan v2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions"
+        },
+        "filterByFormula": "={{ $json.filterFormula }}",
+        "options": {}
+      },
+      "id": "188e68ab-70bf-47f4-82d2-cec9fbce2203",
+      "name": "Find Production Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        640
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update Production Record and Scan History with CORRECTED field names\nconst records = $('Find Production Record').all();\nconst scanData = $('Process Stage Scan v2').first().json;\n\nif (records.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'No production record found',\n      filter: scanData.filterFormula,\n      searchedId: scanData.filterFormula.match(/'([^']+)'/)?.[1]\n    }\n  }];\n}\n\nconst record = records[0].json;\nconst recordId = record.id;\n\n// Get existing scan history\nlet scanHistory = record.fields?.['Scan History'] || '';\nif (scanHistory) {\n  scanHistory += '\\n' + scanData.scanHistoryEntry;\n} else {\n  scanHistory = scanData.scanHistoryEntry;\n}\n\n// Add scan history to update\nconst updateFields = {\n  ...scanData.updateFields,\n  'Scan History': scanHistory\n};\n\n// Get linked Order Item ID for cascading update\n// CORRECTED: Use proper field name from schema\nconst orderItemId = record.fields?.['Order Item']?.[0];\nconst linkedBatch = record.fields?.['Linked Batch']?.[0];\n\nreturn [{\n  json: {\n    recordId,\n    updateFields,\n    orderItemId,\n    newItemStatus: scanData.itemStatus,\n    hasOrderItem: !!orderItemId,\n    batchId: linkedBatch,\n    stage: scanData.stage,\n    action: scanData.action,\n    operator: scanData.operator\n  }\n}];"
+      },
+      "id": "bd818916-e20d-456f-bc3e-9024e8f19470",
+      "name": "Prepare Record Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.recordId }}",
+            "Print Started": "={{ $json.updateFields['Print Started'] }}",
+            "Print Completed": "={{ $json.updateFields['Print Completed'] }}",
+            "QC Completed": "={{ $json.updateFields['QC Completed'] }}",
+            "Cutting Completed": "={{ $json.updateFields['Cutting Completed'] }}",
+            "Ship Completed": "={{ $json.updateFields['Ship Completed'] }}",
+            "Stage Progress": "={{ $json.updateFields['Stage Progress'] }}",
+            "Production Status": "={{ $json.updateFields['Production Status'] }}",
+            "QC Status": "={{ $json.updateFields['QC Status'] }}",
+            "Printer Assignment": "={{ $json.updateFields['Printer Assignment'] }}",
+            "Scan History": "={{ $json.updateFields['Scan History'] }}",
+            "Last Modified": "={{ $json.updateFields['Last Modified'] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "id": "d6006e4c-d2d9-4cf3-8edb-5ee5f1136557",
+      "name": "Update Production Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        180,
+        640
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-item-status",
+              "leftValue": "={{ $json.hasOrderItem }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d9cc12d7-8432-43d2-9456-2ff5ed232a74",
+      "name": "Should Update Item?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        180,
+        860
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTN1vUIpu6HHqEL",
+          "mode": "list",
+          "cachedResultName": "Order Items"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.orderItemId }}",
+            "Item Status": "={{ $json.newItemStatus }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "id": "3efa07d8-1c71-4f85-9548-84b4f20e0940",
+      "name": "Update Order Item Status",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        380,
+        860
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process QC Results with corrected field mappings\nconst input = $input.first().json;\nconst { productionId, qcStatus, defectFound, defectType, issueNotes, needsReprint, operator, issuePhotos } = input.body || input;\n\n// Validate inputs\nif (!productionId || !qcStatus) {\n  return [{\n    json: {\n      success: false,\n      error: 'Missing required fields: productionId, qcStatus',\n      received: { productionId, qcStatus }\n    }\n  }];\n}\n\n// Map QC Status to correct select option IDs\nconst qcStatusMap = {\n  'Pending': 'selZJDZvaTjgNtiyx',\n  'Passed': 'selfEn0LntEHPjyFl', \n  'Failed': 'selybev0Tk5qsQYgf'\n};\n\n// Map QC Status with explicit validation\nlet qcStatusId = qcStatus;\nif (qcStatus === 'Pending') {\n  qcStatusId = qcStatusMap.Pending;\n} else if (qcStatus === 'Passed') {\n  qcStatusId = qcStatusMap.Passed;\n} else if (qcStatus === 'Failed') {\n  qcStatusId = qcStatusMap.Failed;\n}\n\n// Build update data with all possible fields\nconst updateData = {};\n\n// Add required fields\nupdateData['QC Status'] = qcStatusId;\nupdateData['QC Completed'] = new Date().toISOString();\nupdateData['Defect Found'] = defectFound || false;\nupdateData['Stage Progress'] = 50; // QC complete = 50%\nupdateData['Last Modified'] = new Date().toISOString();\n\n// Add optional fields conditionally\nif (defectType) {\n  updateData['Defect Type'] = defectType;\n}\nif (issueNotes) {\n  updateData['Issue Notes'] = issueNotes;\n}\nif (needsReprint !== undefined) {\n  updateData['Needs Reprint'] = needsReprint;\n}\nif (issuePhotos) {\n  updateData['Issue Photos'] = issuePhotos;\n}\n\n// Update production status based on QC result using correct IDs\nif (qcStatus === 'Failed' && needsReprint) {\n  updateData['Production Status'] = 'selqVrzSmxkNPZQUn'; // Failed ID\n} else if (qcStatus === 'Passed') {\n  updateData['Production Status'] = 'selDaG1p0sQ2kO7HI'; // Quality Check ID\n}\n\n// Add to scan history\nconst scanEntry = `${new Date().toISOString()} - QC ${qcStatus} by ${operator || 'Unknown'}${defectFound ? ` (Defect: ${defectType})` : ''}${issueNotes ? ` - ${issueNotes}` : ''}`;\n\nreturn [{\n  json: {\n    filterFormula: `RECORD_ID() = '${productionId}'`,\n    updateData,\n    scanHistoryEntry: scanEntry,\n    needsReprintBatch: qcStatus === 'Failed' && needsReprint,\n    qcStatus,\n    operator: operator || 'Unknown'\n  }\n}];"
+      },
+      "id": "24ae544d-4f51-4371-ae0e-b8ae5d75d367",
+      "name": "Process QC Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare QC Update for Production Record with scan history\nconst qcData = $('Process QC Update').first().json;\nconst records = $('Find Production Record').all();\n\nif (records.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'No production record found for QC update',\n      productionId: qcData.filterFormula\n    }\n  }];\n}\n\nconst record = records[0].json;\nconst recordId = record.id;\n\n// Get existing values\nlet scanHistory = record.fields?.['Scan History'] || '';\nlet reprintCount = record.fields?.['Reprint Count'] || 0;\n\n// Add to scan history\nif (scanHistory) {\n  scanHistory += '\\n' + qcData.scanHistoryEntry;\n} else {\n  scanHistory = qcData.scanHistoryEntry;\n}\n\n// Increment reprint count if needed\nif (qcData.needsReprintBatch) {\n  reprintCount++;\n}\n\n// Merge QC update data with scan history\nconst updateFields = {\n  ...qcData.updateData,\n  'Scan History': scanHistory,\n  'Reprint Count': reprintCount\n};\n\nreturn [{\n  json: {\n    recordId,\n    updateFields,\n    needsReprintBatch: qcData.needsReprintBatch,\n    qcStatus: qcData.qcStatus,\n    operator: qcData.operator\n  }\n}];"
+      },
+      "id": "3fc11d38-2fb1-4e31-a421-c8a335287eac",
+      "name": "Prepare QC Record Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create comprehensive scan response\nconst updateResult = $('Update Production Record').first()?.json;\nconst itemUpdateResult = $('Update Order Item Status').first()?.json;\nconst prepareData = $('Prepare Record Update').first().json;\n\n// Handle different response scenarios\nlet responseData = {\n  success: true,\n  message: `Production stage '${prepareData.stage}' ${prepareData.action} recorded successfully`,\n  productionId: updateResult?.id || prepareData.recordId,\n  stage: prepareData.stage,\n  action: prepareData.action,\n  operator: prepareData.operator,\n  timestamp: prepareData.updateFields?.['Last Modified'],\n  scanHistory: prepareData.updateFields?.['Scan History']?.split('\\n')?.slice(-3) // Last 3 entries\n};\n\n// Add production status info\nif (updateResult?.fields) {\n  responseData.production = {\n    status: updateResult.fields['Production Status'],\n    progress: updateResult.fields['Stage Progress'],\n    facility: updateResult.fields['Print Facility'],\n    printer: updateResult.fields['Printer Assignment']\n  };\n}\n\n// Add item update info if it occurred\nif (itemUpdateResult?.fields) {\n  responseData.orderItem = {\n    id: itemUpdateResult.id,\n    newStatus: itemUpdateResult.fields['Item Status'],\n    updated: true\n  };\n} else if (prepareData.hasOrderItem) {\n  responseData.orderItem = {\n    updated: false,\n    reason: 'No status change required'\n  };\n}\n\n// Add batch info if available\nif (prepareData.batchId) {\n  responseData.batch = {\n    id: prepareData.batchId,\n    affected: true\n  };\n}\n\nreturn [{ json: responseData }];"
+      },
+      "id": "comprehensive-response",
+      "name": "Create Comprehensive Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        750
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, GET, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              },
+              {
+                "name": "Access-Control-Max-Age",
+                "value": "86400"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        780,
+        750
+      ],
+      "id": "65b2380a-0918-45a0-b8b7-909d0021bc41",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Production Stage Scan": {
+      "main": [
+        [
+          {
+            "node": "Process Stage Scan v2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Stage Scan v2": {
+      "main": [
+        [
+          {
+            "node": "Find Production Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Production Record": {
+      "main": [
+        [
+          {
+            "node": "Prepare Record Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Record Update": {
+      "main": [
+        [
+          {
+            "node": "Update Production Record",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Should Update Item?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Production Record": {
+      "main": [
+        [
+          {
+            "node": "Create Comprehensive Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Update Item?": {
+      "main": [
+        [
+          {
+            "node": "Update Order Item Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Comprehensive Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Order Item Status": {
+      "main": [
+        [
+          {
+            "node": "Create Comprehensive Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process QC Update": {
+      "main": [
+        [
+          {
+            "node": "Find Production Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare QC Record Update": {
+      "main": [
+        [
+          {
+            "node": "Update Production Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "production-stage-scan-restored-001",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "ProductionStageScanRestored",
+  "tags": []
+}

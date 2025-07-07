@@ -1,0 +1,198 @@
+{
+  "name": "TS Order Management - Confirm Pickup Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "confirm-pickup",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "40ca7d4b-1651-4a97-af2e-b695792f047b",
+      "name": "Confirm Pickup",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -20
+      ],
+      "webhookId": "f57c6927-6be9-4a1a-a490-69a84ac04297"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process pickup confirmation\nconst input = $input.first().json;\nconst { orderId, pickupCode, signature, confirmedBy, notes, photo } = input.body || input;\n\n// Validate required fields\nif (!orderId || !pickupCode) {\n  return [{\n    json: {\n      success: false,\n      error: 'Missing required fields: orderId and pickupCode'\n    }\n  }];\n}\n\n// Prepare order update with correct field mappings\nconst now = new Date().toISOString();\nconst updateData = {\n  'Pickup Confirmed': now,\n  'Order Status': 'sel0wh96ofbQTIpeF', // Correct select option ID for 'Picked Up'\n  'Internal Notes': notes ? `Pickup confirmed at ${now} by ${confirmedBy || 'Customer'}. ${notes}` : undefined\n};\n\n// Remove undefined properties\nif (!updateData['Internal Notes']) {\n  delete updateData['Internal Notes'];\n}\n\nreturn [{\n  json: {\n    orderId,\n    updateData,\n    pickupLogData: {\n      orderId,\n      pickupCode,\n      confirmedBy: confirmedBy || 'Customer',\n      signature,\n      photo,\n      notes,\n      timestamp: now\n    }\n  }\n}];"
+      },
+      "id": "41a27848-821f-4a92-8548-1fee0502a7b3",
+      "name": "Process Pickup Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2XIKxHAG7e9BFS",
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.orderId }}",
+            "Pickup Confirmed": "={{ $json.updateData['Pickup Confirmed'] }}",
+            "Order Status": "={{ $json.updateData['Order Status'] }}",
+            "Internal Notes": "={{ $json.updateData['Internal Notes'] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "id": "a00f4abd-3c2b-4322-a490-351f771b5828",
+      "name": "Update Order Pickup",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -20
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create pickup log entry\nconst pickupData = $('Process Pickup Confirmation').first().json.pickupLogData;\nconst orderUpdate = $('Update Order Pickup').first().json;\n\n// Note: In production, you'd create this in a Pickup Log table\n// For now, we'll just return success\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Pickup confirmed successfully',\n    orderId: pickupData.orderId,\n    pickupTime: pickupData.timestamp,\n    confirmedBy: pickupData.confirmedBy\n  }\n}];"
+      },
+      "id": "ce0bfe4b-283e-4e03-a070-3a457a224bd5",
+      "name": "Create Pickup Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "05989997-abbd-449a-812b-179134a25ef3",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✅ 5. Confirm Pickup Webhook\n\n### 📝 **Sticky Note: Pickup Confirmation**\n```yaml\nPURPOSE: Records customer pickup completion\nENDPOINT: /webhook/confirm-pickup\nMETHOD: POST\nTRIGGER: Pickup app scan/signature\n\nCONNECTS TO:\n- Orders table (updates)\n- Should create Pickup Log record\n\nKEY MAPPINGS:\n- orderId → Order record\n- Updates:\n  - Pickup Confirmed = now\n  - Order Status = \"Picked Up\"\n  - Internal Notes += pickup details\n\nPAYLOAD EXAMPLE:\n{\n  \"orderId\": \"recXXXXX\",\n  \"pickupCode\": \"PU-1234\",\n  \"confirmedBy\": \"John Doe\",\n  \"signature\": \"base64...\",\n  \"photo\": \"base64...\"\n}\n\nCRITICAL NOTES:\n- Signature can be base64 image\n- Add to Internal Notes for audit\n- Consider separate Pickup Log table\n```\n",
+        "height": 640,
+        "width": 740,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -400
+      ],
+      "id": "1fc0be55-4c6f-41b8-b1db-6f78ee4858ae",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Confirm Pickup": {
+      "main": [
+        [
+          {
+            "node": "Process Pickup Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Pickup Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Update Order Pickup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Order Pickup": {
+      "main": [
+        [
+          {
+            "node": "Create Pickup Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Pickup Log": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b95029d6-3fb1-47fa-8049-6216fbe7aedd",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "aXdcrWpABniyBhEC",
+  "tags": []
+}

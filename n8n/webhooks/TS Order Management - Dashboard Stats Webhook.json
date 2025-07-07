@@ -1,0 +1,492 @@
+{
+  "name": "TS Order Management - Dashboard Stats Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dashboard-stats",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "4b95ecc5-7a8a-4130-960e-bda7bbfe3677",
+      "name": "Dashboard Stats Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1620,
+        -40
+      ],
+      "webhookId": "dashboard-stats-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract facility from request\nconst input = $input.first().json;\nconst facility = input.body?.facility || 'ALL';\n\n// Build filter formulas for each metric with correct field mappings\nconst queries = {\n  activeOrders: facility === 'ALL'\n    ? \"AND({Order Status} != 'seltnfE3r8HcApXwG', {Order Status} != 'sellv2KvP6JuoZaj6', {Order Status} != 'selwjoXFHOJ7JZZIM')\"\n    : `AND({Order Status} != 'seltnfE3r8HcApXwG', {Order Status} != 'sellv2KvP6JuoZaj6', {Order Status} != 'selwjoXFHOJ7JZZIM', {Print Facility} = '${facility}')`,\n\n  inProduction: facility === 'ALL'\n    ? \"OR({Production Status} = 'sel6f7v4gN9GPqgxt', {Production Status} = 'selDaG1p0sQ2kO7HI', {Production Status} = 'selPaWyNohscJYysh')\"\n    : `AND(OR({Production Status} = 'sel6f7v4gN9GPqgxt', {Production Status} = 'selDaG1p0sQ2kO7HI', {Production Status} = 'selPaWyNohscJYysh'), {Print Facility} = '${facility}')`,\n\n  readyPickup: facility === 'ALL'\n    ? \"AND({Order Status} = 'selgEsxegmq7yufti', {Fulfillment Option} = 'selaxl7C9OF2nnzDS')\"\n    : `AND({Order Status} = 'selgEsxegmq7yufti', {Fulfillment Option} = 'selaxl7C9OF2nnzDS', {Print Facility} = '${facility}')`,\n\n  queueItems: facility === 'ALL'\n    ? \"OR({Batch Status} = 'selAWIgrGVJa72pEV', {Batch Status} = 'selw7nDzeWs0a8z6N')\"\n    : `AND(OR({Batch Status} = 'selAWIgrGVJa72pEV', {Batch Status} = 'selw7nDzeWs0a8z6N'), {Print Facility} = '${facility}')`\n};\n\nreturn [\n  { json: { queryType: 'activeOrders', formula: queries.activeOrders, table: 'Orders', facility }},\n  { json: { queryType: 'inProduction', formula: queries.inProduction, table: 'Productions', facility }},\n  { json: { queryType: 'readyPickup', formula: queries.readyPickup, table: 'Orders', facility }},\n  { json: { queryType: 'queueItems', formula: queries.queueItems, table: 'Batches', facility }}\n];"
+      },
+      "id": "1d68fc4b-d463-4870-9147-29b72b7e5c1b",
+      "name": "Parse Request & Build Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.table }}",
+              "value2": "Orders"
+            },
+            {
+              "value1": "={{ $json.queryType }}",
+              "value2": "activeOrders"
+            }
+          ]
+        }
+      },
+      "id": "e19fe35f-cf05-4239-900f-5f0b2464489c",
+      "name": "Filter Active Orders",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.table }}",
+              "value2": "Productions"
+            }
+          ]
+        }
+      },
+      "id": "171cffe4-d19b-4b75-b2a4-d54e0490e23a",
+      "name": "Filter Productions",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.table }}",
+              "value2": "Orders"
+            },
+            {
+              "value1": "={{ $json.queryType }}",
+              "value2": "readyPickup"
+            }
+          ]
+        }
+      },
+      "id": "11a7eb75-cb32-4658-8d3d-d9bf9e672b94",
+      "name": "Filter Ready Pickup",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.table }}",
+              "value2": "Batches"
+            }
+          ]
+        }
+      },
+      "id": "6cee8c6f-55db-4417-acd8-cc452713a021",
+      "name": "Filter Batches",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2XIKxHAG7e9BFS",
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tbl2XIKxHAG7e9BFS"
+        },
+        "filterByFormula": "={{ $json.formula }}",
+        "options": {
+          "fields": [
+            "Order ID"
+          ]
+        }
+      },
+      "id": "cac21e10-8734-4c0a-8908-a606a9599ae3",
+      "name": "Count Active Orders",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        -120
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblKmtH1t8EhgkBT9",
+          "mode": "list",
+          "cachedResultName": "Productions",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblKmtH1t8EhgkBT9"
+        },
+        "filterByFormula": "={{ $json.formula }}",
+        "options": {
+          "fields": [
+            "Production ID"
+          ]
+        }
+      },
+      "id": "6579fd60-9893-4aed-a76b-2411514ef08a",
+      "name": "Count In Production",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        40
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl2XIKxHAG7e9BFS",
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tbl2XIKxHAG7e9BFS"
+        },
+        "filterByFormula": "={{ $json.formula }}",
+        "options": {
+          "fields": [
+            "Order ID"
+          ]
+        }
+      },
+      "id": "62809b92-ffa7-467f-8f07-ad73d0126fbc",
+      "name": "Count Ready Pickup",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        180
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list",
+          "cachedResultName": "Order Management",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblIWVpsJiOF5VZQE",
+          "mode": "list",
+          "cachedResultName": "Batches",
+          "cachedResultUrl": "https://airtable.com/appZdp18sltDYOs4s/tblIWVpsJiOF5VZQE"
+        },
+        "filterByFormula": "={{ $json.formula }}",
+        "options": {
+          "fields": [
+            "Batch Name"
+          ]
+        }
+      },
+      "id": "84c76903-b129-49da-a262-80e64c4d102c",
+      "name": "Count Queue Items",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        340
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get results from all Airtable queries\nconst activeOrdersData = $('Count Active Orders').all();\nconst inProductionData = $('Count In Production').all();\nconst readyPickupData = $('Count Ready Pickup').all();\nconst queueItemsData = $('Count Queue Items').all();\n\n// Count records from each query\nconst activeOrders = activeOrdersData.length > 0 ? activeOrdersData.length : 0;\nconst inProduction = inProductionData.length > 0 ? inProductionData.length : 0;\nconst readyPickup = readyPickupData.length > 0 ? readyPickupData.length : 0;\nconst queueItems = queueItemsData.length > 0 ? queueItemsData.length : 0;\n\n// Get facility from original request\nconst facility = $('Parse Request & Build Queries').first().json.facility || 'ALL';\n\nreturn [{\n  json: {\n    success: true,\n    stats: {\n      activeOrders,\n      inProduction,\n      readyPickup,\n      queueItems,\n      lastUpdated: new Date().toISOString(),\n      facility\n    }\n  }\n}];"
+      },
+      "id": "418cd6e1-3c7f-4b09-9838-2b516abf6d4f",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "8da3f594-d5b3-4da1-ac07-2337d3990721",
+      "name": "Return Dashboard Stats",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -580,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 📊 Dashboard Stats Webhook\n\n## 📝 **Sticky Note: Real-time Dashboard Metrics**\n\n```yaml\nPURPOSE: Provides live stats for main dashboard display\nENDPOINT: /webhook/dashboard-stats\nMETHOD: POST\nTRIGGER: Dashboard page load & 30-second refresh\n\nCONNECTS TO:\n- Orders table (active orders, pickup ready)\n- Productions table (items in production)\n- Batches table (queue length)\n\nREQUEST FORMAT:\n{\n  \"facility\": \"CHICO\" | \"OUTPOST\" | \"ALL\"\n}\n\nRETURNS:\n{\n  \"success\": true,\n  \"stats\": {\n    \"activeOrders\": 42,      # Orders not completed/cancelled/shipped\n    \"inProduction\": 18,      # Items printing/QC/cutting\n    \"readyPickup\": 12,       # Orders ready for customer pickup\n    \"queueItems\": 24,        # Batches waiting or ready to print\n    \"lastUpdated\": \"ISO timestamp\",\n    \"facility\": \"CHICO\"\n  }\n}\n\nFIELD MAPPINGS:\nActive Orders:\n- Order Status != 'Completed'\n- Order Status != 'Cancelled' \n- Order Status != 'Shipped'\n- Facility = {requested} (if not ALL)\n\nIn Production:\n- Production Status = 'Printing' OR\n- Production Status = 'QC' OR\n- Production Status = 'Cutting'\n- Facility filter applied\n\nReady for Pickup:\n- Order Status = 'Ready for Pickup'\n- Fulfillment Option = 'Pickup'\n- Facility filter applied\n\nQueue Items:\n- Batch Status = 'Waiting' OR\n- Batch Status = 'Ready to Print'\n- Facility filter applied\n\nPERFORMANCE NOTES:\n- 4 parallel Airtable queries\n- Returns counts only (not full records)\n- ~500ms typical response time\n- CORS enabled for GitHub Pages\n\nCRITICAL NOTES:\n- Facility \"ALL\" returns combined stats\n- Missing facility defaults to \"ALL\"\n- Empty results return 0 counts\n- Used by dashboard auto-refresh\n\nTROUBLESHOOTING:\n- Check Order Status values match exactly\n- Verify Facility field exists in all tables\n- Ensure Batch Status values are correct\n- Monitor Airtable rate limits\n\nDASHBOARD INTEGRATION:\n// In your dashboard JavaScript:\nasync function loadStats() {\n  const facility = localStorage.getItem('selectedFacility') || 'ALL';\n  const response = await fetch(CONFIG.N8N_BASE + '/webhook/dashboard-stats', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ facility })\n  });\n  const data = await response.json();\n  \n  // Update UI\n  document.getElementById('orders-ready').textContent = data.stats.readyPickup;\n  document.getElementById('in-production').textContent = data.stats.inProduction;\n  document.getElementById('queue-length').textContent = data.stats.queueItems;\n  document.getElementById('active-orders').textContent = data.stats.activeOrders;\n}\n\n// Refresh every 30 seconds\nsetInterval(loadStats, 30000);\n```",
+        "height": 800,
+        "width": 680
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        -240
+      ],
+      "id": "63ad632b-6b0f-463d-ac27-9bb0846a8276",
+      "name": "Sticky Note8"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Dashboard Stats Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Request & Build Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request & Build Queries": {
+      "main": [
+        [
+          {
+            "node": "Filter Active Orders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Productions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Ready Pickup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Active Orders": {
+      "main": [
+        [
+          {
+            "node": "Count Active Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Productions": {
+      "main": [
+        [
+          {
+            "node": "Count In Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Ready Pickup": {
+      "main": [
+        [
+          {
+            "node": "Count Ready Pickup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Batches": {
+      "main": [
+        [
+          {
+            "node": "Count Queue Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Active Orders": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count In Production": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Ready Pickup": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Queue Items": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Return Dashboard Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "51e92584-165a-4668-9e20-4ecf62f4c86a",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "99ZaMKSBNkRGTb16",
+  "tags": []
+}

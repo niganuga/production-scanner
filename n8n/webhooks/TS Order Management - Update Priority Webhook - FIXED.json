@@ -1,0 +1,182 @@
+{
+  "name": "TS Order Management - Update Priority Webhook - FIXED",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "update-priority",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "b697bcfa-0cda-4bd6-b578-5a742243504c",
+      "name": "Update Priority",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        100
+      ],
+      "webhookId": "update-priority-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update batch priority with validation\nconst input = $input.first().json;\nconst { batchId, priority, reason } = input.body || input;\n\n// Validate required fields\nif (!batchId || !priority) {\n  return [{\n    json: {\n      success: false,\n      error: 'Missing required fields: batchId and priority'\n    }\n  }];\n}\n\n// Validate priority value with correct select option IDs\nconst validPriorities = {\n  'Urgent': 'selCTmEz2QSZUZ5iM',\n  'High': 'selWJLWXIkmlczmNo', \n  'Normal': 'selLphBntLo9FXYIX'\n};\n\nconst priorityId = validPriorities[priority];\nif (!priorityId) {\n  return [{\n    json: {\n      success: false,\n      error: `Invalid priority. Must be one of: ${Object.keys(validPriorities).join(', ')}`\n    }\n  }];\n}\n\n// Prepare update with audit trail\nconst now = new Date().toISOString();\nconst updateData = {\n  'Priority': priorityId,\n  'Priority Updated': now\n};\n\n// Add reason to notes if provided\nif (reason) {\n  updateData['Priority Notes'] = `Priority changed to ${priority} at ${now}: ${reason}`;\n}\n\nreturn [{\n  json: {\n    batchId,\n    updateData,\n    originalPriority: priority,\n    reason: reason || 'No reason provided'\n  }\n}];"
+      },
+      "id": "39756efd-fc5c-4e63-97ff-9b4b8ff29846",
+      "name": "Validate & Prepare Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblIWVpsJiOF5VZQE",
+          "mode": "list",
+          "cachedResultName": "Batches"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.batchId }}",
+            "Priority": "={{ $json.updateData.Priority }}",
+            "Priority Updated": "={{ $json.updateData['Priority Updated'] }}",
+            "Priority Notes": "={{ $json.updateData['Priority Notes'] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "id": "7e9b0d84-3c5a-4f93-8e5e-0db9eb4ea5a4",
+      "name": "Update Batch Priority",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        0,
+        100
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return success response\nconst updateResult = $('Update Batch Priority').first().json;\nconst originalData = $('Validate & Prepare Update').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    message: `Priority updated to ${originalData.originalPriority}`,\n    batchId: originalData.batchId,\n    newPriority: originalData.originalPriority,\n    reason: originalData.reason,\n    updatedAt: updateResult.fields['Priority Updated']\n  }\n}];"
+      },
+      "id": "8b2d39de-60af-4b8d-ad4d-ea80efd8349c",
+      "name": "Create Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "13465a6e-3b1e-4dc6-be8e-d9796850f8f8",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        400,
+        100
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Update Priority": {
+      "main": [
+        [
+          {
+            "node": "Validate & Prepare Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Prepare Update": {
+      "main": [
+        [
+          {
+            "node": "Update Batch Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Batch Priority": {
+      "main": [
+        [
+          {
+            "node": "Create Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "update-priority-fixed-001",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "UpdatePriorityFixed",
+  "tags": []
+}

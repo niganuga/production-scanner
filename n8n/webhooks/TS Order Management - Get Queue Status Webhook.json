@@ -1,0 +1,186 @@
+{
+  "name": "TS Order Management - Get Queue Status Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "get-queue-status",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "b697bcfa-0cda-4bd6-b578-5a742243504c",
+      "name": "Get Queue Status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1540,
+        100
+      ],
+      "webhookId": "get-queue-status-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get queue status for facility\nconst input = $input.first().json;\nconst { facility = 'all' } = input.body || input;\n\n// Build filter for active batches with correct status IDs\nlet filterFormula = `AND(\n  OR(\n    {Batch Status} = 'selAWIgrGVJa72pEV',\n    {Batch Status} = 'selbFLFS9NRR0Z10Z',\n    {Batch Status} = 'sel6f7v4gN9GPqgxt'\n  ),\n  {Batch Status} != 'selHzmC5PyhNPUyzl'\n)`;\n\n// Add facility filter if specified\nif (facility !== 'all') {\n  filterFormula = `AND(\n    ${filterFormula},\n    {Print Facility} = '${facility}'\n  )`;\n}\n\nreturn [{\n  json: {\n    filterFormula,\n    facility\n  }\n}];"
+      },
+      "id": "39756efd-fc5c-4e63-97ff-9b4b8ff29846",
+      "name": "Prepare Queue Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1340,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appZdp18sltDYOs4s",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblIWVpsJiOF5VZQE",
+          "mode": "list",
+          "cachedResultName": "Batches"
+        },
+        "filterByFormula": "={{ $json.filterFormula }}",
+        "options": {}
+      },
+      "id": "22bdb0db-664b-484d-b13b-a872d95cc68a",
+      "name": "Get Queue Batches",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -1140,
+        100
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "cmcs8k4CVCEgOjLJ",
+          "name": "aaron@threadtank.com Personal Access Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format queue status response\nconst batches = $('Get Queue Batches').all();\nconst facility = $('Prepare Queue Query').first().json.facility;\n\n// Process batch data\nconst queueData = batches.map((batch, index) => {\n  const fields = batch.json.fields;\n  \n  // Calculate estimated wait time based on position\n  const avgBatchTime = 2; // hours per batch (adjust based on your data)\n  const estimatedStartHours = index * avgBatchTime;\n  const estimatedStart = new Date(Date.now() + estimatedStartHours * 60 * 60 * 1000);\n  \n  return {\n    batchId: batch.json.id,\n    batchName: fields['Batch Name'],\n    facility: fields['Facility'],\n    status: fields['Batch Status'],\n    priority: fields['Priority'],\n    priorityScore: fields['Dynamic Priority Score'],\n    queuePosition: fields['Queue Position'] || index + 1,\n    printType: fields['Print Type'],\n    totalQuantity: fields['Total Quantity'],\n    totalItems: fields['Total Items'],\n    orderCount: fields['Total Orders'],\n    estimatedStart: estimatedStart.toISOString(),\n    estimatedHoursToStart: estimatedStartHours,\n    isOverdue: fields['Is Overdue'],\n    createdAt: fields['Created'],\n    mixedProducts: fields['Mixed Product Types']\n  };\n});\n\n// Group by status\nconst grouped = {\n  queued: queueData.filter(b => b.status === 'Queued'),\n  inProduction: queueData.filter(b => ['In Production', 'Printing'].includes(b.status)),\n  upcoming: queueData.slice(0, 5) // Next 5 batches\n};\n\n// Calculate summary statistics\nconst summary = {\n  totalBatches: queueData.length,\n  queuedBatches: grouped.queued.length,\n  activeBatches: grouped.inProduction.length,\n  estimatedQueueTime: queueData.length * avgBatchTime,\n  urgentBatches: queueData.filter(b => b.priority === 'Urgent').length,\n  overdueBatches: queueData.filter(b => b.isOverdue).length\n};\n\nreturn [{\n  json: {\n    success: true,\n    facility,\n    timestamp: new Date().toISOString(),\n    summary,\n    queue: queueData,\n    grouped,\n    nextBatch: queueData[0] || null\n  }\n}];"
+      },
+      "id": "12bbde28-17eb-4c9e-af68-4cd2073b0ebb",
+      "name": "Format Queue Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -940,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://niganuga.github.io"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, X-Requested-With"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a84d6ac6-50ed-4ed2-b2cd-aa30864b1aa7",
+      "name": "Respond to Webhook2",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📊 7. Queue Status Webhook\n\n### 📝 **Sticky Note: Production Queue**\n```yaml\nPURPOSE: Shows current batch queue by facility\nENDPOINT: /webhook/get-queue-status\nMETHOD: POST\nTRIGGER: Queue monitors, dashboards\n\nCONNECTS TO:\n- Batches table\n- Filters active batches only\n\nKEY MAPPINGS:\n- Batch Status in [\"Queued\", \"In Production\"]\n- Facility filter if specified\n- Sort by Queue Position, Priority Score\n\nPAYLOAD EXAMPLE:\n{\n  \"facility\": \"CHICO\"  // or \"all\"\n}\n\nRETURNS:\n- Queue array with positions\n- Estimated start times\n- Summary statistics\n- Next batch details\n\nCALCULATIONS:\n- estimatedStart = position * 2 hours\n- Group by status\n- Count urgent/overdue\n\nCRITICAL NOTES:\n- Real-time queue visibility\n- 2-hour estimate per batch (adjust)\n- Highlight overdue items\n```",
+        "height": 720,
+        "width": 560
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1340,
+        280
+      ],
+      "id": "227e313b-378e-4f4e-9c90-678ef80c42e6",
+      "name": "Sticky Note6"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Queue Status": {
+      "main": [
+        [
+          {
+            "node": "Prepare Queue Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Queue Query": {
+      "main": [
+        [
+          {
+            "node": "Get Queue Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Queue Batches": {
+      "main": [
+        [
+          {
+            "node": "Format Queue Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Queue Status": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "40d0b9cc-2410-4ec2-bc6c-77e3defceaa2",
+  "meta": {
+    "instanceId": "f3281e77a5c17f9f98e693936270d21cb1e626f756018ce5fc4d8c6e50dca22b"
+  },
+  "id": "bTz0PDdLJG281CRu",
+  "tags": []
+}
